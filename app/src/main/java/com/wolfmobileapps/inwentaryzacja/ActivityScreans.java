@@ -25,9 +25,11 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -62,6 +64,7 @@ public class ActivityScreans extends AppCompatActivity {
     private Button buttonBarOverView;
     private LinearLayout linLayOverView;
     private Button buttonGetDataFromMSSQL;
+    private ImageView imageViewHelper;
 
     // shar pref
     private SharedPreferences shar;
@@ -100,6 +103,7 @@ public class ActivityScreans extends AppCompatActivity {
         buttonBarOverView = findViewById(R.id.buttonBarOverView);
         linLayOverView = findViewById(R.id.linLayOverView);
         buttonGetDataFromMSSQL = findViewById(R.id.buttonGetDataFromMSSQL);
+        imageViewHelper = findViewById(R.id.imageViewHelper);
 
 
 
@@ -218,6 +222,8 @@ public class ActivityScreans extends AppCompatActivity {
                         pictureFromView.compress(Bitmap.CompressFormat.JPEG, 100, bos);
                         byte[] bArray = bos.toByteArray();
 
+                        InputStream inputStream = new ByteArrayInputStream(bArray);
+
                         //Blob blob = new javax.sql.rowset.serial.oracle.sql.BLOB(pdfBytes);
 
                         //Blob blob1 = new SerialBlob
@@ -239,23 +245,50 @@ public class ActivityScreans extends AppCompatActivity {
                         String userName = shar.getString(C.NAME_OF_USER, "");
 
                         // create query
-                        String queryStatement = "Insert into dbo.androidTest " + // MS SQL DB name is  "dbo.androidTest "
-                                " (dateTime, description, picture, userName) values " // names of vars (columns) send to MS SQL DB - dateTime(NOT null, date time format), description(can be null, String max 100 chars), picture(can be null, varbinary format), userName(NOT null String max 50 chars),
-                                + "('"
-                                + dateTime
-                                + "','"
-                                + description
-                                + "','"
-                                + bArray
-                                + "','"
-                                + userName
-                                + "')";
-                        PreparedStatement preparedStatement = connectionMSSQL.prepareStatement(queryStatement);
+                        String queryStatement = "INSERT INTO dbo.androidTest(dateTime, description, userName) VALUES (?, ?, ?)";
+
+                        PreparedStatement preparedStatement = connectionMSSQL.prepareStatement("INSERT INTO dbo.androidTest(dateTime, description, userName, picture) VALUES (?, ?, ?, ?)");
                         //preparedStatement.setBytes(1, bArray); // parameterIndex+1 - first ? in scope, must be "?" instead bArray
+                        //preparedStatement.setBlob(1, inputStream, bArray.length);
+                        //preparedStatement.setBytes(1, bArray);
+
+                        preparedStatement.setString(1, dateTime);
+                        preparedStatement.setString(2, description);
+                        preparedStatement.setString(3, userName);
+                        preparedStatement.setBytes(4, bArray);
+
+
+
                         int resultInt = preparedStatement.executeUpdate(); // result is OK if 1
                         //boolean resultInt = preparedStatement.execute(); // result is OK if true
                         preparedStatement.close();
                         Log.d(TAG, "buttonSendPhotoToMSSQL: EndOf TRY - Seccess ? + resultInt: " + resultInt);
+
+
+
+
+
+
+//                        // create query
+//                        String queryStatement = "Insert into dbo.androidTest " + // MS SQL DB name is  "dbo.androidTest "
+//                                " (dateTime, description, picture, userName) values " // names of vars (columns) send to MS SQL DB - dateTime(NOT null, date time format), description(can be null, String max 100 chars), picture(can be null, varbinary format), userName(NOT null String max 50 chars),
+//                                + "('"
+//                                + dateTime
+//                                + "','"
+//                                + description
+//                                + "','"
+//                                + "?"
+//                                + "','"
+//                                + userName
+//                                + "')";
+//                        PreparedStatement preparedStatement = connectionMSSQL.prepareStatement(queryStatement);
+//                        //preparedStatement.setBytes(1, bArray); // parameterIndex+1 - first ? in scope, must be "?" instead bArray
+//                        //preparedStatement.setBlob(1, inputStream, bArray.length);
+//                        preparedStatement.setBytes(1, bArray);
+//                        int resultInt = preparedStatement.executeUpdate(); // result is OK if 1
+//                        //boolean resultInt = preparedStatement.execute(); // result is OK if true
+//                        preparedStatement.close();
+//                        Log.d(TAG, "buttonSendPhotoToMSSQL: EndOf TRY - Seccess ? + resultInt: " + resultInt);
 
                     } catch (SQLException e) {
                         e.printStackTrace();
@@ -360,14 +393,28 @@ public class ActivityScreans extends AppCompatActivity {
                 Statement statement = connectionMSSQL.createStatement();
                 //ResultSet result = statement.executeQuery("SELECT userName,description FROM dbo.androidTest");
                 // ResultSet result = statement.executeQuery("SELECT userName WHERE userName='Jan.kowalski'");
-                ResultSet result = statement.executeQuery("SELECT dateTime,description,userName FROM dbo.androidTest"); // query to data
+                ResultSet result = statement.executeQuery("SELECT dateTime,description,userName,picture FROM dbo.androidTest"); // query to data
                 Log.d(TAG, "getDataFromServer: result: " + result);
 
-                for (int i = 0; i < 40; i++) { // number of rows to show - can be more than is in DB - won't be crash
+                for (int i = 0; i < 20; i++) { // number of rows to show - can be more than is in DB - won't be crash - olny thow exception
                     result.next(); // star from next line - must be because first line has no data
                     String dateTimeFromResult = result.getString("dateTime");
                     String descriptionFromResult = result.getString("description");
                     String userNameFromResult = result.getString("userName");
+
+
+                    // take image from MS SQL
+                    byte[] bArrayTakenFromMSSQL = result.getBytes("picture");
+
+                    if (bArrayTakenFromMSSQL != null){
+                        // byte[] into bitmap
+                        Bitmap bmTakenFromMSSQL = BitmapFactory.decodeByteArray(bArrayTakenFromMSSQL, 0 ,bArrayTakenFromMSSQL.length);
+                        // set image in image view
+                        imageViewHelper.setImageBitmap(bmTakenFromMSSQL);
+                    }
+
+
+
 
                     //result
                     Log.d(TAG, "getDataFromServer: RESULT: dateTimeFromResult: " + dateTimeFromResult + ", descriptionFromResult: " + descriptionFromResult  + ", userNameFromResult: " + userNameFromResult +  ", number of row: " + i);

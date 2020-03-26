@@ -118,6 +118,14 @@
             android:layout_gravity="center_horizontal"
             android:text="buttonGetDataFromMSSQL" />
 
+        <ImageView
+            android:id="@+id/imageViewHelper"
+            android:layout_width="wrap_content"
+            android:layout_height="100dp"
+            android:layout_gravity="center_horizontal"
+            android:scaleType="centerInside"
+            app:srcCompat="@mipmap/ic_launcher" />
+
 
     </LinearLayout>
 
