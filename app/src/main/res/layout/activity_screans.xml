@@ -6,128 +6,137 @@
     android:layout_height="match_parent"
     tools:context=".ActivityScreans">
 
-    <LinearLayout
-        android:id="@+id/linLayScanner"
+    <ScrollView
+        android:id="@+id/scroolViewScanner"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:visibility="gone"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
-        android:orientation="vertical"
-        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="NOT READY"
+                android:textColor="@color/colorPrimaryDarkBlue900" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <ScrollView
+        android:id="@+id/scroolViewDefect"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/buttonTakePicture"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="Zrób zdjęcie"
+                android:layout_marginBottom="8dp"/>
+
+            <ImageView
+                android:id="@+id/imageViewOfPhotoFromCamera"
+                android:layout_width="wrap_content"
+                android:layout_height="150dp"
+                android:layout_gravity="center_horizontal"
+                android:scaleType="centerInside"
+                app:srcCompat="@drawable/question_mark" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Dodaj opis"
+                android:textColor="@color/colorPrimaryDarkBlue900"/>
+
+            <EditText
+                android:id="@+id/editTextDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Opis"
+                android:inputType="textMultiLine" />
+
+            <Button
+                android:id="@+id/buttonSendPhotoToMSSQL"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="Wyślij" />
+
+            <ProgressBar
+                android:id="@+id/progressBarInDefectWait"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+    </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/linLayOverView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:visibility="gone"
+            android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
-            android:text="NOT READY"
-            android:textColor="@color/colorPrimaryDarkBlue900" />
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toTopOf="@+id/linearLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible"
+            android:orientation="vertical">
 
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/linLayDefect"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        android:orientation="vertical"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:visibility="visible">
-
-        <Button
-            android:id="@+id/buttonTakePicture"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:text="Zrób zdjęcie" />
+            <ProgressBar
+                android:id="@+id/progressBarInOverViewWait"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
 
-        <ImageView
-            android:id="@+id/imageViewOfPhotoFromCamera"
-            android:layout_width="wrap_content"
-            android:layout_height="100dp"
-            android:layout_gravity="center_horizontal"
-            android:scaleType="centerInside"
-            app:srcCompat="@mipmap/ic_launcher" />
-        <ImageView
-            android:id="@+id/imageViewOfPhotoFromCameraSecond"
-            android:layout_width="wrap_content"
-            android:layout_height="100dp"
-            android:layout_gravity="center_horizontal"
-            android:scaleType="centerInside"
-            app:srcCompat="@mipmap/ic_launcher" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Dodaj opis"
-            android:textColor="@color/colorPrimaryDarkBlue900" />
-
-        <EditText
-            android:id="@+id/editTextDescription"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Opis"
-            android:inputType="textMultiLine" />
-
-        <Button
-            android:id="@+id/buttonSendPhotoToMSSQL"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:text="Wyślij" />
-
-
-    </LinearLayout>
-
-
-    <LinearLayout
-        android:id="@+id/linLayOverView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        android:orientation="vertical"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:visibility="visible">
-
-        <Button
-            android:id="@+id/buttonGetDataFromMSSQL"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:text="buttonGetDataFromMSSQL" />
-
-        <ImageView
-            android:id="@+id/imageViewHelper"
-            android:layout_width="wrap_content"
-            android:layout_height="100dp"
-            android:layout_gravity="center_horizontal"
-            android:scaleType="centerInside"
-            app:srcCompat="@mipmap/ic_launcher" />
-
-
-    </LinearLayout>
+            <ListView
+                android:id="@+id/listViewOverView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+            </ListView>
+        </LinearLayout>
 
 
     <LinearLayout
@@ -143,27 +152,27 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:background="@color/colorBackgroundGray200"
             android:padding="8dp"
-            android:text="Skanowanie \nkodu"
-            android:background="@color/colorBackgroundGray200"/>
+            android:text="Skanowanie \nkodu" />
 
         <Button
             android:id="@+id/buttonBarDefect"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:background="@color/colorBackgroundGray200"
             android:padding="8dp"
-            android:text="Zgłoszenie \nwady"
-            android:background="@color/colorBackgroundGray200"/>
+            android:text="Zgłoszenie \nwady" />
 
         <Button
             android:id="@+id/buttonBarOverView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:background="@color/colorBackgroundGray200"
             android:padding="8dp"
-            android:text="Przegląd \nzgłoszeń"
-            android:background="@color/colorBackgroundGray200"/>
+            android:text="Przegląd \nzgłoszeń" />
 
     </LinearLayout>
 

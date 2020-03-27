@@ -4,8 +4,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -16,32 +19,32 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
 import android.provider.MediaStore;
-import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
-import java.io.ByteArrayInputStream;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.TimeZone;
-
-
-
 
 
 public class ActivityScreans extends AppCompatActivity {
@@ -50,21 +53,25 @@ public class ActivityScreans extends AppCompatActivity {
 
     // views scanner
     private Button buttonBarScaner;
-    private LinearLayout linLayScanner;
+    private ScrollView scroolViewScanner;
 
     // views defect
     private Button buttonBarDefect;
-    private LinearLayout linLayDefect;
+    private ScrollView scroolViewDefect;
     private Button buttonTakePicture;
     private ImageView imageViewOfPhotoFromCamera;
     private EditText editTextDescription;
     private Button buttonSendPhotoToMSSQL;
+    private ProgressBar progressBarInDefectWait;
 
     // views overView
     private Button buttonBarOverView;
     private LinearLayout linLayOverView;
-    private Button buttonGetDataFromMSSQL;
-    private ImageView imageViewHelper;
+    private ListView listViewOverView;
+    private ArrayList<OverViewItem> listOverView;
+    private OverWiewArrayAdapter adapterOverView;
+    private ProgressBar progressBarInOverViewWait;
+
 
     // shar pref
     private SharedPreferences shar;
@@ -76,6 +83,8 @@ public class ActivityScreans extends AppCompatActivity {
     private String mCameraFileName = null;
     private Uri imageUri = null;
     private Bitmap imageBitmap = null;
+    private int resultInt = 0; // to second thread response defect
+    private String error = ""; // to second thread response defect
 
     // connection to MS SQL
     private ConnectionClassMSSQL connectionClassMSSQL; //Connection Class Variable
@@ -89,91 +98,60 @@ public class ActivityScreans extends AppCompatActivity {
 
         // views scanner
         buttonBarScaner = findViewById(R.id.buttonBarScaner);
-        linLayScanner = findViewById(R.id.linLayScanner);
+        scroolViewScanner = findViewById(R.id.scroolViewScanner);
 
         // views defect
         buttonBarDefect = findViewById(R.id.buttonBarDefect);
-        linLayDefect = findViewById(R.id.linLayDefect);
+        scroolViewDefect = findViewById(R.id.scroolViewDefect);
         buttonTakePicture = findViewById(R.id.buttonTakePicture);
         imageViewOfPhotoFromCamera = findViewById(R.id.imageViewOfPhotoFromCamera);
         editTextDescription = findViewById(R.id.editTextDescription);
         buttonSendPhotoToMSSQL = findViewById(R.id.buttonSendPhotoToMSSQL);
+        progressBarInDefectWait = findViewById(R.id.progressBarInDefectWait);
 
         // views overView
         buttonBarOverView = findViewById(R.id.buttonBarOverView);
         linLayOverView = findViewById(R.id.linLayOverView);
-        buttonGetDataFromMSSQL = findViewById(R.id.buttonGetDataFromMSSQL);
-        imageViewHelper = findViewById(R.id.imageViewHelper);
-
-
+        listViewOverView = findViewById(R.id.listViewOverView);
+        progressBarInOverViewWait = findViewById(R.id.progressBarInOverViewWait);
 
         // shar pref
         shar = getSharedPreferences(C.NAME_OF_SHAR_PREF,MODE_PRIVATE);
 
         // ask for PERMISSIONS
-        String[] permisionas = {
-                Manifest.permission.CAMERA,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        String[] permisionas = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
         if (!hasPermissions(this, permisionas)) {
             ActivityCompat.requestPermissions(this, permisionas, PERMISSION_ALL);
         }
 
+        // when app starts open Deffect section
+        setScannerSection();
+
         // start connection to MS SQL
         startConnectionToMSSQL();
 
-        // SECTION: BUTTONS BAR TO NAVIGATE  _____________________________________________________________
+        // list and adapter for over View
+        listOverView = new ArrayList<>();
+        adapterOverView = new OverWiewArrayAdapter(this, 0 , listOverView);
+        listViewOverView.setAdapter(adapterOverView);
+
+        // SECTION: BUTTONS BAR TO NAVIGATE  _________________________________________________________________________________________
         buttonBarScaner.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                // set liner layouts visibility
-                linLayScanner.setVisibility(View.VISIBLE);
-                linLayDefect.setVisibility(View.GONE);
-                linLayOverView.setVisibility(View.GONE);
-
-                // set buttons background
-                buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
-                buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
-                buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
-                buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-                buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
-                buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+                setScannerSection();
             }
         });
         buttonBarDefect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                // set liner layouts visibility
-                linLayScanner.setVisibility(View.GONE);
-                linLayDefect.setVisibility(View.VISIBLE);
-                linLayOverView.setVisibility(View.GONE);
-
-                // set buttons background
-                buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
-                buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-                buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
-                buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
-                buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
-                buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+                setDeffectSection();
             }
         });
         buttonBarOverView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                // set liner layouts visibility
-                linLayScanner.setVisibility(View.GONE);
-                linLayDefect.setVisibility(View.GONE);
-                linLayOverView.setVisibility(View.VISIBLE);
-
-                // set buttons background
-                buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
-                buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-                buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
-                buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-                buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
-                buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
+                setOverViewSection();
             }
         });
 
@@ -201,99 +179,88 @@ public class ActivityScreans extends AppCompatActivity {
 
                 if (connectionMSSQL == null) {  // if is NO connection
                     Log.d(TAG, "buttonSendPhotoToMSSQL: connection NOT CONNECTED");
+                    Toast.makeText(ActivityScreans.this, "Brak połączenia z bazą danych", Toast.LENGTH_SHORT).show();
                 } else { // if connection is CONNECTED
                     Log.d(TAG, "buttonSendPhotoToMSSQL: connection CONNECTED");
 
-                    try {
+                    // check gotten data
+                    if (imageBitmap == null) {
+                        showAlertDialog("Dodaj zdjęcie");
+                        return;
+                    }
+                    if (editTextDescription.getText().toString().equals("")){
+                        showAlertDialog("Dodaj opis");
+                        return;
+                    }
+                    if (editTextDescription.getText().toString().length() > 99){
+                        showAlertDialog("Opis jest za długi (max 99 znaków)");
+                        return;
+                    }
+
+                    // hide button Sent and show progress bar
+                    buttonSendPhotoToMSSQL.setVisibility(View.GONE);
+                    progressBarInDefectWait.setVisibility(View.VISIBLE);
 
                         // 1. dateTime - must be format: "YYYY-mm-dd hh:mm:ss"
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-                        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+                        sdf.setTimeZone(TimeZone.getTimeZone("GMT+1"));
                         String dateTime = sdf.format(new Date(System.currentTimeMillis()));
 
                         // 2. description
                         String description = editTextDescription.getText().toString();
-                        editTextDescription.setText(""); // clear view
 
-                        // 3. image - Implicit conversion from data type varchar to varbinary(max) is not allowed. Use the CONVERT function to run this query.
-                        // bitmap into byte[]
+                        // 3. image
                         Bitmap pictureFromView = imageBitmap; // bitmap
+                        // bitmap into byte[]
                         ByteArrayOutputStream bos = new ByteArrayOutputStream();
                         pictureFromView.compress(Bitmap.CompressFormat.JPEG, 100, bos);
                         byte[] bArray = bos.toByteArray();
 
-                        InputStream inputStream = new ByteArrayInputStream(bArray);
-
-                        //Blob blob = new javax.sql.rowset.serial.oracle.sql.BLOB(pdfBytes);
-
-                        //Blob blob1 = new SerialBlob
-//                        Blob blob = new javax.sql.rowset.serial.SerialBlob(bArray);
-
-                        //String encodedImage = Base64.encodeToString(bos.toByteArray(), Base64.DEFAULT);
-
-                        // byte[] into bitmap
-                        Bitmap bm = BitmapFactory.decodeByteArray(bArray, 0 ,bArray.length);
-                        //Bitmap  bitmap = BitmapFactory.decodeByteArray(blob, 0, blob.length); // from blob
-
-                        // set image second
-                        ImageView imageViewOfPhotoFromCameraSecond = findViewById(R.id.imageViewOfPhotoFromCameraSecond);
-                        imageViewOfPhotoFromCameraSecond.setImageBitmap(bm);
-
-                        Log.d(TAG, "onClick: bArray: " + bArray );
-
                         // 4. user name from shar
                         String userName = shar.getString(C.NAME_OF_USER, "");
 
-                        // create query
-                        String queryStatement = "INSERT INTO dbo.androidTest(dateTime, description, userName) VALUES (?, ?, ?)";
+                        new Thread(new Runnable() { // NOT in UI thread
+                            @Override
+                            public void run() {
 
-                        PreparedStatement preparedStatement = connectionMSSQL.prepareStatement("INSERT INTO dbo.androidTest(dateTime, description, userName, picture) VALUES (?, ?, ?, ?)");
-                        //preparedStatement.setBytes(1, bArray); // parameterIndex+1 - first ? in scope, must be "?" instead bArray
-                        //preparedStatement.setBlob(1, inputStream, bArray.length);
-                        //preparedStatement.setBytes(1, bArray);
+                                // execute query and get result
+                                try {
+                                    // create query
+                                    PreparedStatement preparedStatement = connectionMSSQL.prepareStatement("INSERT INTO dbo.androidTest(dateTime, description, picture, userName) VALUES (?, ?, ?, ?)");
+                                    preparedStatement.setString(1, dateTime);
+                                    preparedStatement.setString(2, description);
+                                    preparedStatement.setBytes(3, bArray);
+                                    preparedStatement.setString(4, userName);
 
-                        preparedStatement.setString(1, dateTime);
-                        preparedStatement.setString(2, description);
-                        preparedStatement.setString(3, userName);
-                        preparedStatement.setBytes(4, bArray);
+                                    resultInt = preparedStatement.executeUpdate(); // result is OK if 1
+                                    //boolean resultInt = preparedStatement.execute(); // result is OK if true - don't work
+                                    preparedStatement.close(); // close
+                                } catch (SQLException e) {
+                                    error = e.toString();
+                                    Log.d(TAG, "onCreate: SQLException: " + error);
+                                }
 
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() { //in UI thread
 
+                                        if (resultInt == 0) { // resultInt = 0 - ERROR
+                                            showAlertDialog("Nie wysłano wiadomości \n\nError: " + error);
+                                        } else { // resultInt = 1 - SUCCES
+                                            Toast.makeText(ActivityScreans.this, "Wiadomość wysłana.", Toast.LENGTH_SHORT).show();
+                                        }
 
-                        int resultInt = preparedStatement.executeUpdate(); // result is OK if 1
-                        //boolean resultInt = preparedStatement.execute(); // result is OK if true
-                        preparedStatement.close();
-                        Log.d(TAG, "buttonSendPhotoToMSSQL: EndOf TRY - Seccess ? + resultInt: " + resultInt);
+                                        // hide progress bar and show button Sent
+                                        buttonSendPhotoToMSSQL.setVisibility(View.VISIBLE);
+                                        progressBarInDefectWait.setVisibility(View.GONE);
 
-
-
-
-
-
-//                        // create query
-//                        String queryStatement = "Insert into dbo.androidTest " + // MS SQL DB name is  "dbo.androidTest "
-//                                " (dateTime, description, picture, userName) values " // names of vars (columns) send to MS SQL DB - dateTime(NOT null, date time format), description(can be null, String max 100 chars), picture(can be null, varbinary format), userName(NOT null String max 50 chars),
-//                                + "('"
-//                                + dateTime
-//                                + "','"
-//                                + description
-//                                + "','"
-//                                + "?"
-//                                + "','"
-//                                + userName
-//                                + "')";
-//                        PreparedStatement preparedStatement = connectionMSSQL.prepareStatement(queryStatement);
-//                        //preparedStatement.setBytes(1, bArray); // parameterIndex+1 - first ? in scope, must be "?" instead bArray
-//                        //preparedStatement.setBlob(1, inputStream, bArray.length);
-//                        preparedStatement.setBytes(1, bArray);
-//                        int resultInt = preparedStatement.executeUpdate(); // result is OK if 1
-//                        //boolean resultInt = preparedStatement.execute(); // result is OK if true
-//                        preparedStatement.close();
-//                        Log.d(TAG, "buttonSendPhotoToMSSQL: EndOf TRY - Seccess ? + resultInt: " + resultInt);
-
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                        Log.d(TAG, "onCreate: SQLException: " + e);
-                    }
+                                        // clear views
+                                        editTextDescription.setText("");
+                                        imageViewOfPhotoFromCamera.setImageResource(R.drawable.question_mark);
+                                    }
+                                });
+                            }
+                        }).start();
                 }
             }
         });
@@ -301,12 +268,7 @@ public class ActivityScreans extends AppCompatActivity {
         // SECTION: OVERVIEW ____________________________________________________________________________________________
 
 
-        buttonGetDataFromMSSQL.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getDataFromServer();
-            }
-        });
+
 
     }
     // END onCreate_________________________________________________________________________________________________________________________________________________________________
@@ -360,22 +322,20 @@ public class ActivityScreans extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        // zdjęcie z aparatu
+        // camera photo
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             imageUri = Uri.fromFile(new File(mCameraFileName)); //zwraca zdjęcie z aparatu jako ścieszkę uri
             Log.d(TAG, "onActivityResult: imageUri z aparatu: " + imageUri);
         }
 
-        // zapisuje zdjęcie do imageBitmap na podstawie pobranego imageUri z kamery lub z dysku
+        // save picture to imageBitmap from taken mageUri from camera
         try {
             imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
-            Log.d(TAG, "onActivityResult: blok try do zapisania imageBitmap");
+            imageViewOfPhotoFromCamera.setImageBitmap(imageBitmap); // set imageBitmap in image View
+            Log.d(TAG, "onActivityResult, imageBitmap SAVED and set in imageView");
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.d(TAG, "onActivityResult, ERROr, imageBitmap NOT saved because e: " + e);
         }
-
-        //pokazanie zapisanego zdjęcia w imageView
-        imageViewOfPhotoFromCamera.setImageBitmap(imageBitmap);
     }
 
 
@@ -384,49 +344,80 @@ public class ActivityScreans extends AppCompatActivity {
     // get data from serwer MS SQL
     public void getDataFromServer () {
 
+        // clear list before load elements
+        listOverView.clear();
+
+        // show progress bar
+        progressBarInOverViewWait.setVisibility(View.VISIBLE);
+
         if (connectionMSSQL == null) { // if is NO connection
             Log.d(TAG, "getDataFromServer: connection NOT CONNECTED");
+            Toast.makeText(this, "Brak połączenia z bazą danych", Toast.LENGTH_SHORT).show();
         } else { // if connection is CONNECTED
             Log.d(TAG, "getDataFromServer: connection CONNECTED");
 
-            try {
-                Statement statement = connectionMSSQL.createStatement();
-                //ResultSet result = statement.executeQuery("SELECT userName,description FROM dbo.androidTest");
-                // ResultSet result = statement.executeQuery("SELECT userName WHERE userName='Jan.kowalski'");
-                ResultSet result = statement.executeQuery("SELECT dateTime,description,userName,picture FROM dbo.androidTest"); // query to data
-                Log.d(TAG, "getDataFromServer: result: " + result);
+            new Thread(new Runnable() { // NOT in UI thread
+                @Override
+                public void run() {
 
-                for (int i = 0; i < 20; i++) { // number of rows to show - can be more than is in DB - won't be crash - olny thow exception
-                    result.next(); // star from next line - must be because first line has no data
-                    String dateTimeFromResult = result.getString("dateTime");
-                    String descriptionFromResult = result.getString("description");
-                    String userNameFromResult = result.getString("userName");
+                    // execute query and get result
+                    try {
 
+                        // set number of rows taken from MSSQL and show in list view
+                        int numberOFRowsToShow = 5;
 
-                    // take image from MS SQL
-                    byte[] bArrayTakenFromMSSQL = result.getBytes("picture");
+                        Statement statement = connectionMSSQL.createStatement();
+                        //ResultSet result = statement.executeQuery("SELECT indx WHERE userName='Jan.kowalski'"); // query for indx,
+                        //ResultSet result = statement.executeQuery("SELECT indx,dateTime,description,picture FROM dbo.androidTest"); // query to MS SQL for all rows
+                        ResultSet result = statement.executeQuery("SELECT TOP " + numberOFRowsToShow + " indx,dateTime,description,picture FROM dbo.androidTest ORDER BY indx DESC"); // query to MS SQL for last numberOFRowsToShow rows
 
-                    if (bArrayTakenFromMSSQL != null){
-                        // byte[] into bitmap
-                        Bitmap bmTakenFromMSSQL = BitmapFactory.decodeByteArray(bArrayTakenFromMSSQL, 0 ,bArrayTakenFromMSSQL.length);
-                        // set image in image view
-                        imageViewHelper.setImageBitmap(bmTakenFromMSSQL);
+                        // put data to array
+                        for (int i = 0; i < numberOFRowsToShow; i++) { // number of rows to show - can be more than is in DB - won't be crash - olny thow exception
+                            result.next(); // start from next line - must be because first line has no data
+                            String indxFromResult = "" + result.getInt("indx"); // take indx from MS SQL
+                            String dateTimeFromResult = result.getString("dateTime"); // take dateTime from MS SQL
+                            String descriptionFromResult = result.getString("description"); // take description from MS SQL
+
+                            // get picture
+                            byte[] bArrayTakenFromMSSQL = result.getBytes("picture"); // take picture from MS SQL
+                            // set picture
+                            Bitmap bitmapFromResult = null;
+                            if (bArrayTakenFromMSSQL != null){
+                                bitmapFromResult = BitmapFactory.decodeByteArray(bArrayTakenFromMSSQL, 0 ,bArrayTakenFromMSSQL.length); // byte[] into bitmap
+                            }
+
+                            // add element to list view
+                            listOverView.add(new OverViewItem(bitmapFromResult,indxFromResult,dateTimeFromResult, descriptionFromResult));
+
+                            //result
+                            Log.d(TAG, "getDataFromServer: RESULT: " + "indxFromResult: " + indxFromResult + ", dateTimeFromResult: " + dateTimeFromResult + ", descriptionFromResult: " + descriptionFromResult  +  ", number of row: " + i);
+                            Log.d(TAG, "getDataFromServer: listOverView.size(): " + listOverView.size());
+                        }
+
+                    } catch (SQLException e) { // cath when is set numberOFRowsToShow more than exist - can be - no crash
+                        Log.d(TAG, "onCreate: SQLException: " + e);
                     }
 
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() { //in UI thread
 
+                            // reverse list if need
+                            //Collections.reverse(listOverView);
 
+                            // notyfi adapter
+                            adapterOverView.notifyDataSetChanged();
 
-                    //result
-                    Log.d(TAG, "getDataFromServer: RESULT: dateTimeFromResult: " + dateTimeFromResult + ", descriptionFromResult: " + descriptionFromResult  + ", userNameFromResult: " + userNameFromResult +  ", number of row: " + i);
+                            // hide progress bar
+                            progressBarInOverViewWait.setVisibility(View.GONE);
+                        }
+                    });
                 }
-
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            }).start();
         }
     }
 
-    // SECTION: PERMISSIONS_____________________________________________ __________________________________________________________
+    // SECTION: REST _____________________________________________ __________________________________________________________
     // ask for permissions
     public static boolean hasPermissions(Context context, String... permissions) {
         if (context != null && permissions != null) {
@@ -438,5 +429,65 @@ public class ActivityScreans extends AppCompatActivity {
         }
         return true;
     }
+    // show alert dialog
+    public void showAlertDialog(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(ActivityScreans.this);
+        builder.setTitle("Info");
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //do nothing
+            }
+        }).create();
+        builder.show();
+    }
 
+    // SECTION: BUTTONS BAR TO NAVIGATE  _______________________________________________________________________________________________________
+    public void setScannerSection () {
+        // set liner layouts visibility
+        scroolViewScanner.setVisibility(View.VISIBLE);
+        scroolViewDefect.setVisibility(View.GONE);
+        linLayOverView.setVisibility(View.GONE);
+
+        // set buttons background
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
+        buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+    }
+    public void setDeffectSection () {
+        // set liner layouts visibility
+        scroolViewScanner.setVisibility(View.GONE);
+        scroolViewDefect.setVisibility(View.VISIBLE);
+        linLayOverView.setVisibility(View.GONE);
+
+        // set buttons background
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
+        buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+    }
+    public void setOverViewSection () {
+
+        // set liner layouts visibility
+        scroolViewScanner.setVisibility(View.GONE);
+        scroolViewDefect.setVisibility(View.GONE);
+        linLayOverView.setVisibility(View.VISIBLE);
+
+        // set buttons background
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
+        buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
+
+        // get data from server
+        getDataFromServer();
+    }
 }
