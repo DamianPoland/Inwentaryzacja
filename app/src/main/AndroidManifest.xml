@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -18,9 +20,29 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".ActivityScreans"
+
+
+
+
+        <service
+            android:name=".ServiceNotifications"
+            android:enabled="true"
+            android:exported="true" />
+
+        <activity android:name=".ActivityAlertFromService"
             android:screenOrientation="portrait"></activity>
-        <activity android:name=".ActivityLogin"
+        <activity
+            android:name=".ActivitySettings"
+            android:parentActivityName=".ActivityScreans" />
+        <activity
+            android:name=".ActivityInfo"
+            android:parentActivityName=".ActivityScreans" />
+        <activity
+            android:name=".ActivityScreans"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateHidden"/>
+        <activity
+            android:name=".ActivityLogin"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

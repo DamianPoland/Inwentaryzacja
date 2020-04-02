@@ -2,11 +2,17 @@ package com.wolfmobileapps.inwentaryzacja;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -14,13 +20,21 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -28,8 +42,12 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+
+import com.microsoft.signalr.HubConnection;
+import com.microsoft.signalr.HubConnectionBuilder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -46,6 +64,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.TimeZone;
 
+import io.reactivex.Single;
+
 
 public class ActivityScreans extends AppCompatActivity {
 
@@ -54,6 +74,11 @@ public class ActivityScreans extends AppCompatActivity {
     // views scanner
     private Button buttonBarScaner;
     private ScrollView scroolViewScanner;
+    private EditText editTextScanCode;
+    private TextView textViewTakenCode;
+    private EditText editTextScanQuantity;
+    private Button buttonScanSendDataToSignalR;
+    private ProgressBar progressBarScanWait;
 
     // views defect
     private Button buttonBarDefect;
@@ -85,10 +110,14 @@ public class ActivityScreans extends AppCompatActivity {
     private Bitmap imageBitmap = null;
     private int resultInt = 0; // to second thread response defect
     private String error = ""; // to second thread response defect
+    private boolean isGetingDataFromMSSQL = false;
 
     // connection to MS SQL
     private ConnectionClassMSSQL connectionClassMSSQL; //Connection Class Variable
     private Connection connectionMSSQL;
+
+    // signalR
+    private HubConnection hubConnection;
 
 
     @Override
@@ -99,6 +128,11 @@ public class ActivityScreans extends AppCompatActivity {
         // views scanner
         buttonBarScaner = findViewById(R.id.buttonBarScaner);
         scroolViewScanner = findViewById(R.id.scroolViewScanner);
+        editTextScanCode = findViewById(R.id.editTextScanCode);
+        textViewTakenCode = findViewById(R.id.textViewTakenCode);
+        editTextScanQuantity = findViewById(R.id.editTextScanQuantity);
+        buttonScanSendDataToSignalR = findViewById(R.id.buttonScanSendDataToSignalR);
+        progressBarScanWait = findViewById(R.id.progressBarScanWait);
 
         // views defect
         buttonBarDefect = findViewById(R.id.buttonBarDefect);
@@ -118,6 +152,9 @@ public class ActivityScreans extends AppCompatActivity {
         // shar pref
         shar = getSharedPreferences(C.NAME_OF_SHAR_PREF,MODE_PRIVATE);
 
+        // notification cannel
+        createNotificationChannel();
+
         // ask for PERMISSIONS
         String[] permisionas = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
         if (!hasPermissions(this, permisionas)) {
@@ -127,8 +164,14 @@ public class ActivityScreans extends AppCompatActivity {
         // when app starts open Deffect section
         setScannerSection();
 
+        // start connectivity listener
+        //startConnectivityManager();
+
         // start connection to MS SQL
         startConnectionToMSSQL();
+
+        // start connection to signalR
+        startSignalR();
 
         // list and adapter for over View
         listOverView = new ArrayList<>();
@@ -158,9 +201,68 @@ public class ActivityScreans extends AppCompatActivity {
 
         // SECTION: SCANNER ____________________________________________________________________________________________
 
+        // when press actionSend (enter) than do this - scanner press enter itself ???
+        editTextScanCode.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    Log.d(TAG, "onEditorAction: editTextScanCode.setOnEditorActionListener:");
+
+                    // get scanned code from editTextScanCode and put to textViewTakenCode
+                    String codeFromEditText = editTextScanCode.getText().toString();
+                    textViewTakenCode.setText(codeFromEditText);
+
+                    handled = true;
+                }
+                return handled;
+            }
+        });
+
+        // button send data
+        buttonScanSendDataToSignalR.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("CheckResult")
+            @Override
+            public void onClick(View v) {
+
+                // get code
+                String codeFromScanner = textViewTakenCode.getText().toString();
+                if (codeFromScanner.equals("")) {
+                    showAlertDialog("Zeskanuj produkt");
+                    return;
+                }
+
+                // TODO only for test - delete after
+                codeFromScanner = "00978134571233644610"; // no always work
 
 
+                // get quantity
+                String quantity = editTextScanQuantity.getText().toString();
+                if (quantity.equals("")) {
+                    showAlertDialog("Podaj ilość.");
+                    return;
+                }
+                if (quantity.length()>4) {
+                    showAlertDialog("Max ilośc to 9999.");
+                    return;
+                }
+                int quantityInteger = Integer.parseInt(quantity);
 
+                // show progressBarScanWait and hide buttonScanSendDataToSignalR
+                progressBarScanWait.setVisibility(View.VISIBLE);
+                buttonScanSendDataToSignalR.setVisibility(View.GONE);
+
+                Log.d(TAG, "buttonScanSendDataToSignalR, onClick: codeFromScanner: " + codeFromScanner + ", quantityInteger: " + quantityInteger);
+
+                // send data to signalR
+                if (hubConnection != null) {
+                    Single<Boolean> exc = hubConnection.invoke(Boolean.class, "ScannedItem", codeFromScanner, quantityInteger); // example to true: codeFromScanner = "09140983601050918115", quantityInteger = "3925"
+                    exc.filter((Boolean x) -> Boolean.class.isInstance(x))
+                            .cast(Boolean.class)
+                            .subscribe((Boolean x) -> scannerDataResult(x)); // function to manage answer
+                }
+            }
+        });
 
         // SECTION: DEFECT ______________________________________________________________________________________________
         // button take picture from camera
@@ -246,6 +348,10 @@ public class ActivityScreans extends AppCompatActivity {
 
                                         if (resultInt == 0) { // resultInt = 0 - ERROR
                                             showAlertDialog("Nie wysłano wiadomości \n\nError: " + error);
+
+                                            // change color of background for time
+                                            changeBackgroudColorForTimeInSec(1);
+
                                         } else { // resultInt = 1 - SUCCES
                                             Toast.makeText(ActivityScreans.this, "Wiadomość wysłana.", Toast.LENGTH_SHORT).show();
                                         }
@@ -274,6 +380,29 @@ public class ActivityScreans extends AppCompatActivity {
     // END onCreate_________________________________________________________________________________________________________________________________________________________________
 
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // start/stop service
+        if (shar.getBoolean(C.SWITCH_NOTIFICATIONS_IS_ON, true)) {
+            //Toast.makeText(this, "START service", Toast.LENGTH_SHORT).show();
+
+            // start service
+            Intent intent = new Intent(ActivityScreans.this, ServiceNotifications.class);
+            startService(intent);
+
+
+        } else {
+            //Toast.makeText(this, "STOP service", Toast.LENGTH_SHORT).show();
+
+            // stop service
+            Intent intent = new Intent(ActivityScreans.this, ServiceNotifications.class);
+            stopService(intent);
+
+        }
+    }
+
     // start connection to MS SQL
     public void startConnectionToMSSQL () {
 
@@ -287,11 +416,55 @@ public class ActivityScreans extends AppCompatActivity {
         }
     }
 
+    // start connection signalR
+    public void startSignalR() {
+
+        try {
+            // 1. built connection
+            hubConnection = HubConnectionBuilder.create(C.SERWER_URL).build();
+
+            // 2. start connection
+            hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
+            Log.d(TAG, "startSignalR ConnectionState(): " + hubConnection.getConnectionState());
+
+
+        } catch (Exception e) { // cath if hubConnection.start() is not possible
+            Log.d(TAG, "ActivityLogin, startSignalR: Exception: " + e);
+            Toast.makeText(this, "Exception: " + e, Toast.LENGTH_LONG).show();
+        }
+    }
+
     // SECTION: SCANNER  _____________________________________________________________________________________________
 
+    public void scannerDataResult(boolean result) {
 
+        // must be on UI thread
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
 
+                // show buttonScanSendDataToSignalR and hide progressBarScanWait
+                progressBarScanWait.setVisibility(View.GONE);
+                buttonScanSendDataToSignalR.setVisibility(View.VISIBLE);
 
+                // clear view
+                editTextScanCode.setText(""); // clear edit text
+                textViewTakenCode.setText(""); // clear text View
+                editTextScanQuantity.setText(""); // clear edit text
+
+                // menage result
+                if (result) {
+                    Toast.makeText(ActivityScreans.this, "Wysłano.", Toast.LENGTH_SHORT).show();
+
+                } else {
+                    showAlertDialog("Błąd! \nNie dostarczono.");
+
+                    // change color of background for time
+                    changeBackgroudColorForTimeInSec(1);
+                }
+            }
+        });
+    }
 
     // SECTION: DEFECT  _____________________________________________________________________________________________
     // take picture from camera
@@ -344,8 +517,16 @@ public class ActivityScreans extends AppCompatActivity {
     // get data from serwer MS SQL
     public void getDataFromServer () {
 
+        //can't start new request if old one is not finish
+        if (isGetingDataFromMSSQL) {
+            return;
+        }
+
         // clear list before load elements
         listOverView.clear();
+
+        // change var for true if start getting data - can't start new request if old one is not finish
+        isGetingDataFromMSSQL = true;
 
         // show progress bar
         progressBarInOverViewWait.setVisibility(View.VISIBLE);
@@ -410,6 +591,9 @@ public class ActivityScreans extends AppCompatActivity {
 
                             // hide progress bar
                             progressBarInOverViewWait.setVisibility(View.GONE);
+
+                            // change var for false if end getting data - can't start new request if old one is not finish
+                            isGetingDataFromMSSQL = false;
                         }
                     });
                 }
@@ -418,6 +602,26 @@ public class ActivityScreans extends AppCompatActivity {
     }
 
     // SECTION: REST _____________________________________________ __________________________________________________________
+
+    // change color of background for time
+    public void changeBackgroudColorForTimeInSec(double time) {
+        long timeLong = (long) (time*1000);
+
+        scroolViewScanner.setBackgroundColor(Color.RED);
+        scroolViewDefect.setBackgroundColor(Color.RED);
+        linLayOverView.setBackgroundColor(Color.RED);
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            public void run() {
+                // Actions to do after
+                scroolViewScanner.setBackgroundColor(Color.TRANSPARENT);
+                scroolViewDefect.setBackgroundColor(Color.TRANSPARENT);
+                linLayOverView.setBackgroundColor(Color.TRANSPARENT);
+            }
+        }, timeLong); // delay
+    }
+
+
     // ask for permissions
     public static boolean hasPermissions(Context context, String... permissions) {
         if (context != null && permissions != null) {
@@ -490,4 +694,68 @@ public class ActivityScreans extends AppCompatActivity {
         // get data from server
         getDataFromServer();
     }
+
+    // SECTION: MENU  _______________________________________________________________________________________________________
+
+    // create notification channel
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Inwentaryzacja";
+            String description = "Powiadomienia";
+            int importance = NotificationManager.IMPORTANCE_LOW; // low importance - no sound
+            NotificationChannel channel = new NotificationChannel(C.CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    // menu options
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_activity_screans, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    // menu options
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch (item.getItemId()) {
+            case R.id.menu_info:
+                startActivity(new Intent(ActivityScreans.this, ActivityInfo.class));
+                break;
+            case R.id.menu_settings:
+                startActivity(new Intent(ActivityScreans.this, ActivitySettings.class));
+                break;
+            case R.id.menu_log_out:
+                // save user logged OUT in shar pref
+                editor = shar.edit();
+                editor.putBoolean(C.USER_IS_LOGGED, false);
+                editor.apply();
+
+                // stop signalR connection
+                if (hubConnection != null) {
+                    hubConnection.stop().blockingAwait(); //  wait for stop
+                }
+
+                // stop service
+                Intent intent = new Intent(ActivityScreans.this, ServiceNotifications.class);
+                stopService(intent);
+
+                // finish current activity
+                finish();
+
+                // start login activity
+                startActivity(new Intent(ActivityScreans.this, ActivityLogin.class));
+
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
 }

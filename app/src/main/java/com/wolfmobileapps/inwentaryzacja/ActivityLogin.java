@@ -2,10 +2,17 @@ package com.wolfmobileapps.inwentaryzacja;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -13,7 +20,11 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.microsoft.signalr.HubConnection;
 import com.microsoft.signalr.HubConnectionBuilder;
@@ -28,9 +39,14 @@ public class ActivityLogin extends AppCompatActivity {
     private static final String TAG = "ActivityLogin";
 
     // views
+    private LinearLayout linLayLoginNoInternetConnection;
     private Spinner spinnerUsers;
     private EditText editTextPassword;
     private Button buttonLogin;
+    private ProgressBar progressBarLoginWait;
+    private LinearLayout linLayConnecting;
+    private ScrollView scroolViewLogin;
+
 
     // shar pref
     private SharedPreferences shar;
@@ -40,9 +56,12 @@ public class ActivityLogin extends AppCompatActivity {
     private ArrayList<String> listOfUsers = new ArrayList<>();
     private ArrayAdapter<String> spinnerArrayAdapter;
 
+    // for connectivityManager
+    private ConnectivityManager connectivityManager;
+    private ConnectivityManager.NetworkCallback networkCallback;
+
     // signalR
     private HubConnection hubConnection;
-    private String serverUrl = "http://lachmana.dyndns.org:15000/hub"; // url: "http://lachmana.dyndns.org:15000/hub"
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,110 +69,30 @@ public class ActivityLogin extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         //views
+        linLayLoginNoInternetConnection = findViewById(R.id.linLayLoginNoInternetConnection);
         spinnerUsers = findViewById(R.id.spinnerUsers);
         editTextPassword = findViewById(R.id.editTextPassword);
         buttonLogin = findViewById(R.id.buttonLogin);
+        progressBarLoginWait = findViewById(R.id.progressBarLoginWait);
+        linLayConnecting = findViewById(R.id.linLayConnecting);
+        scroolViewLogin = findViewById(R.id.scroolViewLogin);
 
         // shar pref
-        shar = getSharedPreferences(C.NAME_OF_SHAR_PREF,MODE_PRIVATE);
+        shar = getSharedPreferences(C.NAME_OF_SHAR_PREF, MODE_PRIVATE);
 
-
-
-
-
-
-        // TODO: comment that after - only for testing because log out not exist - rest adjusted
         // open second activity if was looged before
         boolean userIsLogged = shar.getBoolean(C.USER_IS_LOGGED, false);
         if (userIsLogged) {
+            // close current activity - on back pressed in next activity don's work
+            finish();
+
+            // standard ActivityScreans
             startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
             return;
         }
 
-
-
-
-
-
-
-        // button login
-        buttonLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "startSignalR: hubConnection.getConnectionState(): " + hubConnection.getConnectionState());
-
-                // get user name from shar
-                String userNameTakenFromList  = shar.getString(C.NAME_OF_USER, "");
-
-                if (userNameTakenFromList.equals("")) {
-                    showAlertDialog("Wybierz nazwę użytkownika");
-                    return;
-                }
-
-                if (editTextPassword.getText().toString().equals("")) {
-                    showAlertDialog("Wpisz hasło");
-                    return;
-                }
-
-                // login users in signalR
-                String userName = userNameTakenFromList;
-                String password = editTextPassword.getText().toString();
-
-                Single<Boolean> exc = hubConnection.invoke(Boolean.class, "Login", userName, password);
-                exc.filter((Boolean x) -> Boolean.class.isInstance(x))
-                        .cast(Boolean.class)
-                        .subscribe((Boolean x) -> loginResult(x));
-            }
-        });
-
-        // start signalR connection
-        startSignalR();
-    }
-
-    // END onCreate____________________________________________________________________________________________________
-
-
-
-    // start signalR connection
-    public void startSignalR() {
-
-        // 1. built connection
-        hubConnection = HubConnectionBuilder.create(serverUrl).build();
-
-        // 2 built method to show alert sended by signalR - must be build after build connection and before start connection
-        hubConnection.on("Alert", (alert) -> {
-            Log.d(TAG, "New Alert from signalR: " + alert);
-        }, String.class);
-
-        // 3. start connection
-        hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
-        Log.d(TAG, "startSignalR ConnectionState(): " + hubConnection.getConnectionState());
-
-        // get users from signalR
-        getUsersFromSignalR();
-    }
-
-
-    // get users from signalR
-    public void getUsersFromSignalR() {
-
-        Single<String[]> ex = hubConnection.invoke(String[].class, "Users");
-        ex.filter((String[] x) -> String[].class.isInstance(x))
-                .cast(String[].class)
-                .subscribe((String[] x) -> unpackData(x)); // start function to unpack list of users
-    }
-
-    // unspack list of users users
-    public void unpackData(String[] data) {
-
-        // clear list of users
-        listOfUsers.clear();
-
-        // add users names to list
-        for (int i = 0; i < data.length; i++) {
-            listOfUsers.add(data[i]);
-            Log.d(TAG, "unpackData: " + data[i]);
-        }
+        // start connectivity listener
+        startConnectivityManager();
 
         //set Spinner with users
         spinnerArrayAdapter = new ArrayAdapter<>(ActivityLogin.this, android.R.layout.simple_list_item_1, listOfUsers);
@@ -178,6 +117,105 @@ public class ActivityLogin extends AppCompatActivity {
                 // no code
             }
         });
+
+        // button login
+        buttonLogin.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("CheckResult")
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "startSignalR: hubConnection.getConnectionState(): " + hubConnection.getConnectionState());
+
+                // get user name from shar
+                String userNameTakenFromList = shar.getString(C.NAME_OF_USER, "");
+
+                if (userNameTakenFromList.equals("")) {
+                    showAlertDialog("Wybierz nazwę użytkownika");
+                    return;
+                }
+
+                if (editTextPassword.getText().toString().equals("")) {
+                    showAlertDialog("Wpisz hasło");
+                    return;
+                }
+
+                // show progressBarLoginWait and hide buttonLogin
+                progressBarLoginWait.setVisibility(View.VISIBLE);
+                buttonLogin.setVisibility(View.GONE);
+
+                // login users in signalR
+                String userName = userNameTakenFromList;
+                String password = editTextPassword.getText().toString();
+
+
+                // request to signalR
+                try {
+                    Single<Boolean> exc = hubConnection.invoke(Boolean.class, "Login", userName, password);
+                    exc.filter((Boolean x) -> Boolean.class.isInstance(x))
+                            .cast(Boolean.class)
+                            .subscribe((Boolean x) -> loginResult(x));
+                } catch (Exception e) {
+                    Log.d(TAG, "Exception, onClick: " + e);
+                }
+
+            }
+        });
+    }
+
+    // END onCreate____________________________________________________________________________________________________
+
+
+    // start signalR connection
+    public void startSignalR() {
+
+        try {
+            // 1. built connection
+            hubConnection = HubConnectionBuilder.create(C.SERWER_URL).build();
+
+            // 2. start connection
+            hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
+            Log.d(TAG, "startSignalR ConnectionState(): " + hubConnection.getConnectionState());
+
+            // show views after connect Succes
+            linLayConnecting.setVisibility(View.GONE);
+            scroolViewLogin.setVisibility(View.VISIBLE);
+
+            // 3. get users from signalR
+            getUsersFromSignalR();
+
+        } catch (Exception e) { // cath if hubConnection.start() is not possible
+            Log.d(TAG, "ActivityLogin, startSignalR: Exception: " + e);
+            Toast.makeText(this, "Exception: " + e, Toast.LENGTH_LONG).show();
+        }
+    }
+
+
+    // get users from signalR
+    @SuppressLint("CheckResult")
+    public void getUsersFromSignalR() {
+
+        Single<String[]> ex = hubConnection.invoke(String[].class, "Users");
+        ex.filter((String[] x) -> String[].class.isInstance(x))
+                .cast(String[].class)
+                .subscribe((String[] x) -> unpackData(x)); // start function to unpack list of users
+    }
+
+    // unspack list of users users
+    public void unpackData(String[] data) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // clear list of users
+                listOfUsers.clear();
+
+                // add users names to list
+                for (int i = 0; i < data.length; i++) {
+                    listOfUsers.add(data[i]);
+                    Log.d(TAG, "unpackData: " + data[i]);
+                }
+                spinnerArrayAdapter.notifyDataSetChanged();
+            }
+        });
     }
 
     public void loginResult(boolean result) {
@@ -186,6 +224,10 @@ public class ActivityLogin extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+
+                // show buttonLogin and hide progressBarLoginWait
+                progressBarLoginWait.setVisibility(View.GONE);
+                buttonLogin.setVisibility(View.VISIBLE);
 
                 // clear password view
                 editTextPassword.setText("");
@@ -198,9 +240,21 @@ public class ActivityLogin extends AppCompatActivity {
                     editor.putBoolean(C.USER_IS_LOGGED, result);
                     editor.apply();
 
-                    // standard password is 1234
+                    // stop signalR connection
+                    if (hubConnection != null) {
+                        hubConnection.stop().blockingAwait(); //  wait for stop
+                    }
+
+                    // stop connectivity listener
+                    connectivityManager.unregisterNetworkCallback(networkCallback);
+
+                    // close current activity - on back pressed in next activity don's work
+                    finish();
+
+                    // standard ActivityScreans (standard password is 1234)
                     Log.d(TAG, "loginResult: " + result);
                     startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
+
 
                 } else {
 
@@ -214,6 +268,48 @@ public class ActivityLogin extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    // start connectivity listener
+    public void startConnectivityManager() {
+
+        // start connectivity listener
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                // network available
+                Log.d(TAG, "ConnectivityManager, conection YES: ");
+
+                //hide linLayLoginNoInternetConnection
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        linLayLoginNoInternetConnection.setVisibility(View.GONE); // hide inofrmation NO internet
+
+                        // start signalR connection
+                        startSignalR();
+                    }
+                });
+            }
+
+            @Override
+            public void onLost(Network network) {
+                // network unavailable
+                Log.d(TAG, "ConnectivityManager, conection NO: ");
+
+                // show linLayLoginNoInternetConnection
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        linLayLoginNoInternetConnection.setVisibility(View.VISIBLE); // show inofrmation NO internet
+                        scroolViewLogin.setVisibility(View.GONE); // hide view to login
+                        linLayConnecting.setVisibility(View.VISIBLE); // show view connection
+                    }
+                });
+            }
+        };
+        connectivityManager = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
+        connectivityManager.registerDefaultNetworkCallback(networkCallback);
     }
 
     // show alert dialog
