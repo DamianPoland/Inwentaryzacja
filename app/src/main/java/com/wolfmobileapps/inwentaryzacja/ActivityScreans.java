@@ -21,12 +21,17 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.StrictMode;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -71,6 +76,12 @@ public class ActivityScreans extends AppCompatActivity {
 
     private static final String TAG = "ActivityScreans";
 
+    // views general
+    private LinearLayout linearLayoutBottomButtons;
+    private LinearLayout linLayScreansNoInternetConnection;
+    private LinearLayout linLayScreansConnectingSignalR;
+    private LinearLayout linLayScreansConnectingMSSQL;
+
     // views scanner
     private Button buttonBarScaner;
     private ScrollView scroolViewScanner;
@@ -97,7 +108,6 @@ public class ActivityScreans extends AppCompatActivity {
     private OverWiewArrayAdapter adapterOverView;
     private ProgressBar progressBarInOverViewWait;
 
-
     // shar pref
     private SharedPreferences shar;
     private SharedPreferences.Editor editor;
@@ -111,19 +121,31 @@ public class ActivityScreans extends AppCompatActivity {
     private int resultInt = 0; // to second thread response defect
     private String error = ""; // to second thread response defect
     private boolean isGetingDataFromMSSQL = false;
+    private boolean isSignalRConnected = false; // if change for true than can show views (connectivityManager)
+    private boolean isMSSQLConnected = false; // if change for true than can show views (connectivityManager)
+
+    // for connectivityManager
+    private ConnectivityManager connectivityManager;
+    private ConnectivityManager.NetworkCallback networkCallback;
+
+    // signalR
+    private HubConnection hubConnection;
 
     // connection to MS SQL
     private ConnectionClassMSSQL connectionClassMSSQL; //Connection Class Variable
     private Connection connectionMSSQL;
-
-    // signalR
-    private HubConnection hubConnection;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_screans);
+
+        // views general
+        linearLayoutBottomButtons = findViewById(R.id.linearLayoutBottomButtons);
+        linLayScreansNoInternetConnection = findViewById(R.id.linLayScreansNoInternetConnection);
+        linLayScreansConnectingSignalR = findViewById(R.id.linLayScreansConnectingSignalR);
+        linLayScreansConnectingMSSQL = findViewById(R.id.linLayScreansConnectingMSSQL);
 
         // views scanner
         buttonBarScaner = findViewById(R.id.buttonBarScaner);
@@ -161,17 +183,8 @@ public class ActivityScreans extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, permisionas, PERMISSION_ALL);
         }
 
-        // when app starts open Deffect section
-        setScannerSection();
-
-        // start connectivity listener
-        //startConnectivityManager();
-
-        // start connection to MS SQL
-        startConnectionToMSSQL();
-
-        // start connection to signalR
-        startSignalR();
+        // start connectivity listener - start and stop EWERYTHING !
+        startConnectivityManager();
 
         // list and adapter for over View
         listOverView = new ArrayList<>();
@@ -232,10 +245,6 @@ public class ActivityScreans extends AppCompatActivity {
                     return;
                 }
 
-                // TODO only for test - delete after
-                codeFromScanner = "00978134571233644610"; // no always work
-
-
                 // get quantity
                 String quantity = editTextScanQuantity.getText().toString();
                 if (quantity.equals("")) {
@@ -256,7 +265,7 @@ public class ActivityScreans extends AppCompatActivity {
 
                 // send data to signalR
                 if (hubConnection != null) {
-                    Single<Boolean> exc = hubConnection.invoke(Boolean.class, "ScannedItem", codeFromScanner, quantityInteger); // example to true: codeFromScanner = "09140983601050918115", quantityInteger = "3925"
+                    Single<Boolean> exc = hubConnection.invoke(Boolean.class, "ScannedItem", codeFromScanner, quantityInteger); // true or false answer from signalR is random
                     exc.filter((Boolean x) -> Boolean.class.isInstance(x))
                             .cast(Boolean.class)
                             .subscribe((Boolean x) -> scannerDataResult(x)); // function to manage answer
@@ -380,40 +389,68 @@ public class ActivityScreans extends AppCompatActivity {
     // END onCreate_________________________________________________________________________________________________________________________________________________________________
 
 
-    @Override
-    protected void onResume() {
-        super.onResume();
+    // start connectivity listener
+    public void startConnectivityManager() {
 
-        // start/stop service
-        if (shar.getBoolean(C.SWITCH_NOTIFICATIONS_IS_ON, true)) {
-            //Toast.makeText(this, "START service", Toast.LENGTH_SHORT).show();
+        // start connectivity listener
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                // network available
+                Log.d(TAG, "ConnectivityManager, conection YES: ");
 
-            // start service
-            Intent intent = new Intent(ActivityScreans.this, ServiceNotifications.class);
-            startService(intent);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
 
+                        //hide linLayScreansNoInternetConnection - hide inofrmation NO internet
+                        linLayScreansNoInternetConnection.setVisibility(View.GONE);
 
-        } else {
-            //Toast.makeText(this, "STOP service", Toast.LENGTH_SHORT).show();
+                        // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect
+                        startSignalR();
 
-            // stop service
-            Intent intent = new Intent(ActivityScreans.this, ServiceNotifications.class);
-            stopService(intent);
+                        // start connection to MS SQL
+                        startConnectionToMSSQL();
 
-        }
-    }
+                        //start service with notifications
+                        startService();
+                    }
+                });
+            }
 
-    // start connection to MS SQL
-    public void startConnectionToMSSQL () {
+            @Override
+            public void onLost(Network network) {
+                // network unavailable
+                Log.d(TAG, "ConnectivityManager, conection NO: ");
 
-        connectionClassMSSQL = new ConnectionClassMSSQL(); // Connection Class MS SQL Initialization
-        connectionMSSQL = connectionClassMSSQL.CONN(); //Connection Object
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
 
-        if (connectionMSSQL == null) {  // if is NO connection
-            Log.d(TAG, "startConnectionToMSSQL: connection NOT CONNECTED");
-        } else { // if connection is CONNECTED
-            Log.d(TAG, "startConnectionToMSSQL: connection CONNECTED");
-        }
+                        // show and hide informations
+                        linLayScreansNoInternetConnection.setVisibility(View.VISIBLE); // show inofrmation NO internet
+                        linLayScreansConnectingSignalR.setVisibility(View.VISIBLE); // show view SignalR connection ...
+                        linLayScreansConnectingMSSQL.setVisibility(View.VISIBLE); // show view MS SQL connection ...
+                        linearLayoutBottomButtons.setVisibility(View.GONE); // hide bottom buttons
+                        scroolViewScanner.setVisibility(View.GONE); // hide view scanner
+                        scroolViewDefect.setVisibility(View.GONE); // hide view deffect
+                        linLayOverView.setVisibility(View.GONE); // hide view Over View
+
+                        // stop signalR connection
+                        if (hubConnection != null) {
+                            hubConnection.stop();
+                        }
+
+                        // stop MS SQL connection - no need
+
+                        // stop service
+                        stopService(new Intent(ActivityScreans.this, ServiceNotifications.class));
+                    }
+                });
+            }
+        };
+        connectivityManager = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
+        connectivityManager.registerDefaultNetworkCallback(networkCallback);
     }
 
     // start connection signalR
@@ -427,16 +464,66 @@ public class ActivityScreans extends AppCompatActivity {
             hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
             Log.d(TAG, "startSignalR ConnectionState(): " + hubConnection.getConnectionState());
 
+            isSignalRConnected = true; // if change for true than can show views
+            linLayScreansConnectingSignalR.setVisibility(View.GONE); // hide view SignalR connection ...
+            showViewsIfAllConnectionsAreConnected(); // func to start main view
+
 
         } catch (Exception e) { // cath if hubConnection.start() is not possible
             Log.d(TAG, "ActivityLogin, startSignalR: Exception: " + e);
-            Toast.makeText(this, "Exception: " + e, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "SignalR brak połączenia \nException: " + e, Toast.LENGTH_LONG).show();
         }
+    }
+
+    // start connection to MS SQL
+    public void startConnectionToMSSQL () {
+
+        connectionClassMSSQL = new ConnectionClassMSSQL(); // Connection Class MS SQL Initialization
+        connectionMSSQL = connectionClassMSSQL.CONN(); //Connection Object
+
+        if (connectionMSSQL == null) {  // if is NO connection
+            Log.d(TAG, "startConnectionToMSSQL: connection NOT CONNECTED");
+            Toast.makeText(this, "MS SQL brak połączenia", Toast.LENGTH_LONG).show();
+        } else { // if connection is CONNECTED
+            Log.d(TAG, "startConnectionToMSSQL: connection CONNECTED");
+            isMSSQLConnected = true; // if change for true than can show views
+            linLayScreansConnectingMSSQL.setVisibility(View.GONE); // hide view MS SQL connection ...
+            showViewsIfAllConnectionsAreConnected(); // func to start main view
+        }
+    }
+
+    // start service
+    public void startService() {
+        if (shar.getBoolean(C.SWITCH_NOTIFICATIONS_IS_ON, true)) {
+
+            // stop service
+            stopService(new Intent(ActivityScreans.this, ServiceNotifications.class));
+
+            // start service
+            startService(new Intent(ActivityScreans.this, ServiceNotifications.class));
+        }
+    }
+
+    // func to start main view
+    public void showViewsIfAllConnectionsAreConnected() {
+
+        // check if SignalR and MS SQL is connected
+        if (!isSignalRConnected) {
+            return;
+        }
+        if (!isMSSQLConnected) {
+            return;
+        }
+
+        //show wiews - setScannerSection or setDeffectSection or setOverViewSection
+        setScannerSection();
+
     }
 
     // SECTION: SCANNER  _____________________________________________________________________________________________
 
     public void scannerDataResult(boolean result) {
+        Log.d(TAG, "scannerDataResult: " +result);
 
         // must be on UI thread
         runOnUiThread(new Runnable() {
@@ -506,7 +593,7 @@ public class ActivityScreans extends AppCompatActivity {
             imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
             imageViewOfPhotoFromCamera.setImageBitmap(imageBitmap); // set imageBitmap in image View
             Log.d(TAG, "onActivityResult, imageBitmap SAVED and set in imageView");
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.d(TAG, "onActivityResult, ERROr, imageBitmap NOT saved because e: " + e);
         }
     }
@@ -607,6 +694,21 @@ public class ActivityScreans extends AppCompatActivity {
     public void changeBackgroudColorForTimeInSec(double time) {
         long timeLong = (long) (time*1000);
 
+        // make vibration
+        Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        // Vibrate for 500 milliseconds
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+            //deprecated in API 26
+            v.vibrate(500);
+        }
+
+        //play sound
+        MediaPlayer mediaPlayer = MediaPlayer.create(this, R.raw.moonless);
+        mediaPlayer.start();
+
+        //change color
         scroolViewScanner.setBackgroundColor(Color.RED);
         scroolViewDefect.setBackgroundColor(Color.RED);
         linLayOverView.setBackgroundColor(Color.RED);
@@ -650,12 +752,13 @@ public class ActivityScreans extends AppCompatActivity {
     // SECTION: BUTTONS BAR TO NAVIGATE  _______________________________________________________________________________________________________
     public void setScannerSection () {
         // set liner layouts visibility
+        linearLayoutBottomButtons.setVisibility(View.VISIBLE);
         scroolViewScanner.setVisibility(View.VISIBLE);
         scroolViewDefect.setVisibility(View.GONE);
         linLayOverView.setVisibility(View.GONE);
 
         // set buttons background
-        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryDarkBlue900));
         buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
         buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
@@ -664,6 +767,7 @@ public class ActivityScreans extends AppCompatActivity {
     }
     public void setDeffectSection () {
         // set liner layouts visibility
+        linearLayoutBottomButtons.setVisibility(View.VISIBLE);
         scroolViewScanner.setVisibility(View.GONE);
         scroolViewDefect.setVisibility(View.VISIBLE);
         linLayOverView.setVisibility(View.GONE);
@@ -671,7 +775,7 @@ public class ActivityScreans extends AppCompatActivity {
         // set buttons background
         buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
         buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryDarkBlue900));
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
         buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
@@ -679,6 +783,7 @@ public class ActivityScreans extends AppCompatActivity {
     public void setOverViewSection () {
 
         // set liner layouts visibility
+        linearLayoutBottomButtons.setVisibility(View.VISIBLE);
         scroolViewScanner.setVisibility(View.GONE);
         scroolViewDefect.setVisibility(View.GONE);
         linLayOverView.setVisibility(View.VISIBLE);
@@ -688,7 +793,7 @@ public class ActivityScreans extends AppCompatActivity {
         buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
         buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryBlue600));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryDarkBlue900));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
 
         // get data from server
@@ -742,6 +847,9 @@ public class ActivityScreans extends AppCompatActivity {
                 if (hubConnection != null) {
                     hubConnection.stop().blockingAwait(); //  wait for stop
                 }
+
+                // stop connectivity listener
+                connectivityManager.unregisterNetworkCallback(networkCallback);
 
                 // stop service
                 Intent intent = new Intent(ActivityScreans.this, ServiceNotifications.class);

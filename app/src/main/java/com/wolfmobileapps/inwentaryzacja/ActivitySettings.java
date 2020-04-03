@@ -2,6 +2,7 @@ package com.wolfmobileapps.inwentaryzacja;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
@@ -50,6 +51,9 @@ public class ActivitySettings extends AppCompatActivity {
                     editor.putBoolean(C.SWITCH_NOTIFICATIONS_IS_ON, true);
                     editor.apply();
 
+                    // start service
+                    startService(new Intent(ActivitySettings.this, ServiceNotifications.class));
+
                     Toast.makeText(ActivitySettings.this, "Powiadomienia włączone.", Toast.LENGTH_SHORT).show();
 
                 } else {
@@ -59,13 +63,13 @@ public class ActivitySettings extends AppCompatActivity {
                     editor.putBoolean(C.SWITCH_NOTIFICATIONS_IS_ON, false);
                     editor.apply();
 
+                    // stop service
+                    stopService(new Intent(ActivitySettings.this, ServiceNotifications.class));
+
                     Toast.makeText(ActivitySettings.this, "Powiadomienia wyłączone.", Toast.LENGTH_SHORT).show();
                 }
             }
         });
-
-
-
-
     }
 }
+

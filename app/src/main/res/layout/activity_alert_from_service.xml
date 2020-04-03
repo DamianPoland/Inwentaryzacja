@@ -45,7 +45,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="16dp"
-            android:text="Zapoznałem się" />
+            android:background="@drawable/button_custom_white"
+            android:text="  Zapoznałem się  " />
 
         <ProgressBar
             android:id="@+id/progressBarAlertWait"

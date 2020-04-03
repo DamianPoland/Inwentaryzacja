@@ -88,18 +88,27 @@ public class ActivityAlertFromService extends AppCompatActivity {
                     hubConnection.stop().blockingAwait(); //  wait for stop
                     Log.d(TAG, "stopSignalR ConnectionState(): " + hubConnection.getConnectionState());
 
+                    // show buttonMessage and hide progressBarAlertWait
+                    //showButtonAndHideProgressBar();
 
                 } catch (Exception e) { // cath if hubConnection.start() is not possible
                     Log.d(TAG, "ActivityLogin, startSignalR: Exception: " + e);
+
+                    // show buttonMessage and hide progressBarAlertWait
+                    showButtonAndHideProgressBar();
                 }
 
-                // show buttonMessage and hide progressBarAlertWait
-                buttonMessage.setVisibility(View.VISIBLE);
-                progressBarAlertWait.setVisibility(View.GONE);
+
 
                 // close Activity
                 finish();
             }
         });
+    }
+
+    // show buttonMessage and hide progressBarAlertWait
+    public void showButtonAndHideProgressBar() {
+        buttonMessage.setVisibility(View.VISIBLE);
+        progressBarAlertWait.setVisibility(View.GONE);
     }
 }

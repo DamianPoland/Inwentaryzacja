@@ -44,7 +44,7 @@ public class ActivityLogin extends AppCompatActivity {
     private EditText editTextPassword;
     private Button buttonLogin;
     private ProgressBar progressBarLoginWait;
-    private LinearLayout linLayConnecting;
+    private LinearLayout linLayLoginConnectingSignalR;
     private ScrollView scroolViewLogin;
 
 
@@ -74,7 +74,7 @@ public class ActivityLogin extends AppCompatActivity {
         editTextPassword = findViewById(R.id.editTextPassword);
         buttonLogin = findViewById(R.id.buttonLogin);
         progressBarLoginWait = findViewById(R.id.progressBarLoginWait);
-        linLayConnecting = findViewById(R.id.linLayConnecting);
+        linLayLoginConnectingSignalR = findViewById(R.id.linLayLoginConnectingSignalR);
         scroolViewLogin = findViewById(R.id.scroolViewLogin);
 
         // shar pref
@@ -83,12 +83,9 @@ public class ActivityLogin extends AppCompatActivity {
         // open second activity if was looged before
         boolean userIsLogged = shar.getBoolean(C.USER_IS_LOGGED, false);
         if (userIsLogged) {
-            // close current activity - on back pressed in next activity don's work
-            finish();
 
-            // standard ActivityScreans
-            startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
-            return;
+            // start next activity and close this
+            startNextActivity();
         }
 
         // start connectivity listener
@@ -146,7 +143,6 @@ public class ActivityLogin extends AppCompatActivity {
                 String userName = userNameTakenFromList;
                 String password = editTextPassword.getText().toString();
 
-
                 // request to signalR
                 try {
                     Single<Boolean> exc = hubConnection.invoke(Boolean.class, "Login", userName, password);
@@ -155,8 +151,11 @@ public class ActivityLogin extends AppCompatActivity {
                             .subscribe((Boolean x) -> loginResult(x));
                 } catch (Exception e) {
                     Log.d(TAG, "Exception, onClick: " + e);
-                }
+                    Toast.makeText(ActivityLogin.this, "Exception: " + e, Toast.LENGTH_LONG).show();
 
+                    // show buttonLogin and hide progressBarLoginWait
+                    showButtonAndHideProgress();
+                }
             }
         });
     }
@@ -174,10 +173,6 @@ public class ActivityLogin extends AppCompatActivity {
             // 2. start connection
             hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
             Log.d(TAG, "startSignalR ConnectionState(): " + hubConnection.getConnectionState());
-
-            // show views after connect Succes
-            linLayConnecting.setVisibility(View.GONE);
-            scroolViewLogin.setVisibility(View.VISIBLE);
 
             // 3. get users from signalR
             getUsersFromSignalR();
@@ -214,6 +209,10 @@ public class ActivityLogin extends AppCompatActivity {
                     Log.d(TAG, "unpackData: " + data[i]);
                 }
                 spinnerArrayAdapter.notifyDataSetChanged();
+
+                // show views after connect Succes
+                linLayLoginConnectingSignalR.setVisibility(View.GONE);
+                scroolViewLogin.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -226,8 +225,7 @@ public class ActivityLogin extends AppCompatActivity {
             public void run() {
 
                 // show buttonLogin and hide progressBarLoginWait
-                progressBarLoginWait.setVisibility(View.GONE);
-                buttonLogin.setVisibility(View.VISIBLE);
+                showButtonAndHideProgress();
 
                 // clear password view
                 editTextPassword.setText("");
@@ -248,13 +246,8 @@ public class ActivityLogin extends AppCompatActivity {
                     // stop connectivity listener
                     connectivityManager.unregisterNetworkCallback(networkCallback);
 
-                    // close current activity - on back pressed in next activity don's work
-                    finish();
-
-                    // standard ActivityScreans (standard password is 1234)
-                    Log.d(TAG, "loginResult: " + result);
-                    startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
-
+                    // start next activity and close this
+                    startNextActivity();
 
                 } else {
 
@@ -264,10 +257,25 @@ public class ActivityLogin extends AppCompatActivity {
                     editor.apply();
 
                     showAlertDialog("Niepoprawne hasło");
-                    Log.d(TAG, "loginResult: " + result);
                 }
             }
         });
+    }
+
+    // show buttonLogin and hide progressBarLoginWait
+    public void showButtonAndHideProgress () {
+        progressBarLoginWait.setVisibility(View.GONE);
+        buttonLogin.setVisibility(View.VISIBLE);
+    }
+
+    // start next activity and close this
+    public void startNextActivity() {
+
+        // close current activity - on back pressed in next activity don's work
+        finish();
+
+        // standard ActivityScreans (standard password is 1234)
+        startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
     }
 
     // start connectivity listener
@@ -280,13 +288,14 @@ public class ActivityLogin extends AppCompatActivity {
                 // network available
                 Log.d(TAG, "ConnectivityManager, conection YES: ");
 
-                //hide linLayLoginNoInternetConnection
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        linLayLoginNoInternetConnection.setVisibility(View.GONE); // hide inofrmation NO internet
 
-                        // start signalR connection
+                        //hide linLayLoginNoInternetConnection - hide inofrmation NO internet
+                        linLayLoginNoInternetConnection.setVisibility(View.GONE);
+
+                        // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect
                         startSignalR();
                     }
                 });
@@ -297,13 +306,14 @@ public class ActivityLogin extends AppCompatActivity {
                 // network unavailable
                 Log.d(TAG, "ConnectivityManager, conection NO: ");
 
-                // show linLayLoginNoInternetConnection
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+
+                        // show and hide informations
                         linLayLoginNoInternetConnection.setVisibility(View.VISIBLE); // show inofrmation NO internet
+                        linLayLoginConnectingSignalR.setVisibility(View.VISIBLE); // show view connection
                         scroolViewLogin.setVisibility(View.GONE); // hide view to login
-                        linLayConnecting.setVisibility(View.VISIBLE); // show view connection
                     }
                 });
             }
