@@ -8,13 +8,14 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <uses-feature
         android:name="android.hardware.camera"
         android:required="true" />
 
     <application
+        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -22,25 +23,32 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+
+
         <service
             android:name=".ServiceNotifications"
             android:enabled="true"
             android:exported="true" />
 
-        <activity android:name=".ActivityAlertFromService"
-            android:screenOrientation="portrait"></activity>
+        <activity android:name=".ActivityShowImage"
+            android:screenOrientation="portrait" >
+
+        </activity>
+        <activity
+            android:name=".ActivityAlertFromService"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".ActivitySettings"
             android:parentActivityName=".ActivityScreans"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait" />
         <activity
             android:name=".ActivityInfo"
             android:parentActivityName=".ActivityScreans"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait" />
         <activity
             android:name=".ActivityScreans"
             android:screenOrientation="portrait"
-            android:windowSoftInputMode="stateHidden"/>
+            android:windowSoftInputMode="stateHidden" />
         <activity
             android:name=".ActivityLogin"
             android:screenOrientation="portrait">

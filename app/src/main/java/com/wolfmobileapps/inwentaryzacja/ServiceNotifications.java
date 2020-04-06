@@ -82,7 +82,7 @@ public class ServiceNotifications extends Service {
 
         // stop signalR connection
         if (hubConnection != null) {
-            hubConnection.stop().blockingAwait(); //  wait for stop
+            hubConnection.stop(); //  wait for stop -can't be .blockingAwait() because of runtime Exception
         }
     }
 

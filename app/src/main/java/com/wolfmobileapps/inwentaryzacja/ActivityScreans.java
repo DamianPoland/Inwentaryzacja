@@ -40,6 +40,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -135,6 +136,8 @@ public class ActivityScreans extends AppCompatActivity {
     private ConnectionClassMSSQL connectionClassMSSQL; //Connection Class Variable
     private Connection connectionMSSQL;
 
+    public static Bitmap currentBitmap;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -190,6 +193,16 @@ public class ActivityScreans extends AppCompatActivity {
         listOverView = new ArrayList<>();
         adapterOverView = new OverWiewArrayAdapter(this, 0 , listOverView);
         listViewOverView.setAdapter(adapterOverView);
+        listViewOverView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                // start activity to show image in big screen
+                currentBitmap = listOverView.get(position).getPictureSQLData(); // put image to static variable
+                startActivity(new Intent(ActivityScreans.this, ActivityShowImage.class));
+            }
+        });
+
 
         // SECTION: BUTTONS BAR TO NAVIGATE  _________________________________________________________________________________________
         buttonBarScaner.setOnClickListener(new View.OnClickListener() {
@@ -363,15 +376,16 @@ public class ActivityScreans extends AppCompatActivity {
 
                                         } else { // resultInt = 1 - SUCCES
                                             Toast.makeText(ActivityScreans.this, "Wiadomość wysłana.", Toast.LENGTH_SHORT).show();
+
+                                            // clear views
+                                            editTextDescription.setText("");
+                                            imageViewOfPhotoFromCamera.setImageResource(R.drawable.question_mark);
                                         }
 
                                         // hide progress bar and show button Sent
                                         buttonSendPhotoToMSSQL.setVisibility(View.VISIBLE);
                                         progressBarInDefectWait.setVisibility(View.GONE);
 
-                                        // clear views
-                                        editTextDescription.setText("");
-                                        imageViewOfPhotoFromCamera.setImageResource(R.drawable.question_mark);
                                     }
                                 });
                             }
@@ -534,14 +548,14 @@ public class ActivityScreans extends AppCompatActivity {
                 progressBarScanWait.setVisibility(View.GONE);
                 buttonScanSendDataToSignalR.setVisibility(View.VISIBLE);
 
-                // clear view
-                editTextScanCode.setText(""); // clear edit text
-                textViewTakenCode.setText(""); // clear text View
-                editTextScanQuantity.setText(""); // clear edit text
-
                 // menage result
                 if (result) {
                     Toast.makeText(ActivityScreans.this, "Wysłano.", Toast.LENGTH_SHORT).show();
+
+                    // clear view
+                    editTextScanCode.setText(""); // clear edit text
+                    textViewTakenCode.setText(""); // clear text View
+                    editTextScanQuantity.setText(""); // clear edit text
 
                 } else {
                     showAlertDialog("Błąd! \nNie dostarczono.");
