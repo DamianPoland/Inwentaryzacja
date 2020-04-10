@@ -10,10 +10,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -80,13 +78,16 @@ public class ActivityLogin extends AppCompatActivity {
         // shar pref
         shar = getSharedPreferences(C.NAME_OF_SHAR_PREF, MODE_PRIVATE);
 
-        // open second activity if was looged before
-        boolean userIsLogged = shar.getBoolean(C.USER_IS_LOGGED, false);
-        if (userIsLogged) {
+        // TODO:  open second activity if was looged before - Ckient don't want that
+//        boolean userIsLogged = shar.getBoolean(C.USER_IS_LOGGED, false);
+//        if (userIsLogged) {
+//
+//            // start next activity and close this
+//            startNextActivity();
+//        }
 
-            // start next activity and close this
-            startNextActivity();
-        }
+
+
 
         // start connectivity listener
         startConnectivityManager();
@@ -168,7 +169,7 @@ public class ActivityLogin extends AppCompatActivity {
 
         try {
             // 1. built connection
-            hubConnection = HubConnectionBuilder.create(C.SERWER_URL).build();
+            hubConnection = HubConnectionBuilder.create(shar.getString(C.SIGNAL_R_URL_FOR_SHAR, C.SIGNAL_R_URL_STANDARD)).build();
 
             // 2. start connection
             hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
@@ -179,10 +180,26 @@ public class ActivityLogin extends AppCompatActivity {
 
         } catch (Exception e) { // cath if hubConnection.start() is not possible
             Log.d(TAG, "ActivityLogin, startSignalR: Exception: " + e);
-            Toast.makeText(this, "Exception: " + e, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "SignalR brak połączenia", Toast.LENGTH_SHORT).show();
+
+            // if catch exception than wait waitTime and try again connect to SignalR
+            startSignalRAgain();
         }
     }
 
+    // if catch exception than wait waitTime and try again connect to SignalR
+    public void startSignalRAgain () {
+
+        Handler handler = new Handler();
+        long waitTime = C.WAITING_TIME*1000; // waitTime
+        handler.postDelayed(new Runnable() {
+            public void run() {
+
+                // start signalR after waitTime
+                startSignalR();
+            }
+        }, waitTime); // delay
+    }
 
     // get users from signalR
     @SuppressLint("CheckResult")

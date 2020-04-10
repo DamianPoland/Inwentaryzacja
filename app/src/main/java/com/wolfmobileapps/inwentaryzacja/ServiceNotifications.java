@@ -4,17 +4,16 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 
 import com.microsoft.signalr.HubConnection;
 import com.microsoft.signalr.HubConnectionBuilder;
-
-import java.security.PrivateKey;
 
 public class ServiceNotifications extends Service {
 
@@ -56,15 +55,27 @@ public class ServiceNotifications extends Service {
 
         // start service
         try {
+
+            // shar pref
+            SharedPreferences shar = getSharedPreferences(C.NAME_OF_SHAR_PREF, MODE_PRIVATE);
+
             // 1. built connection
-            hubConnection = HubConnectionBuilder.create(C.SERWER_URL).build();
+            hubConnection = HubConnectionBuilder.create(shar.getString(C.SIGNAL_R_URL_FOR_SHAR, C.SIGNAL_R_URL_STANDARD)).build();
 
             // 2 built method to show alert sended by signalR - must be build after build connection and before start connection
             hubConnection.on("Alert", (alert) -> {
                 Log.d(TAG, "New Alert from signalR: " + alert);
-                Intent intentFromService = new Intent(ServiceNotifications.this, ActivityAlertFromService.class);
-                intentFromService.putExtra(C.INTENT_FROM_SERVICE , alert);
-                startActivity(intentFromService);
+
+                // for android 10 and more sometching not work ??
+                if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+                    // Do something for android 10 and above versions
+                    Log.d(TAG, "startSignalR: Android 10 or more! Not Show alert yet!");
+                } else{
+                    Intent intentFromService = new Intent(ServiceNotifications.this, ActivityAlertFromService.class);
+                    intentFromService.putExtra(C.INTENT_FROM_SERVICE , alert);
+                    startActivity(intentFromService);
+                    Log.d(TAG, "New Alert AFTER from signalR: " + alert);
+                }
             }, String.class);
 
             // 3. start connection
@@ -73,7 +84,24 @@ public class ServiceNotifications extends Service {
 
         } catch (Exception e) { // cath if hubConnection.start() is not possible
             Log.d(TAG, "ServiceNotifications, startSignalR: Exception: " + e);
+
+            // if catch exception than wait waitTime and try again connect to SignalR
+            startSignalRAgain();
         }
+    }
+
+    // if catch exception than wait waitTime and try again connect to SignalR
+    public void startSignalRAgain () {
+
+        Handler handler = new Handler();
+        long waitTime = C.WAITING_TIME*1000; // waitTime
+        handler.postDelayed(new Runnable() {
+            public void run() {
+
+                // start signalR after waitTime
+                startSignalR();
+            }
+        }, waitTime); // delay
     }
 
     @Override

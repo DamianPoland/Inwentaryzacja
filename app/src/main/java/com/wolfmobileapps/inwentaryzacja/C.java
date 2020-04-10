@@ -12,5 +12,12 @@ public class C {
 
     public static final String CHANNEL_ID = "Inwentaryzacja_Chanel"; // notifications canel
 
-    public static final String SERWER_URL = "http://lachmana.dyndns.org:15000/hub"; // serwer to connect signalR, url: "http://lachmana.dyndns.org:15000/hub"
+    public static final String SIGNAL_R_URL_FOR_SHAR = "signal R URL for shar";
+    public static final String SIGNAL_R_URL_STANDARD = "http://lachmana.dyndns.org:15000/hub"; // serwer to connect signalR, url: "http://lachmana.dyndns.org:15000/hub"
+
+    public static final String MS_SQL_URL_FOR_SHAR = "MS SQL URL for shar";
+    public static final String MS_SQL_URL_STANDARD = "lachmana.dyndns.org:1433"; // serwer url: "lachmana.dyndns.org:1433"
+
+    public static final int WAITING_TIME = 5; // waiting time
+
 }

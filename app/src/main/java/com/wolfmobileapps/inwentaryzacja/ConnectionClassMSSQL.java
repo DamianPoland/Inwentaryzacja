@@ -1,6 +1,9 @@
 package com.wolfmobileapps.inwentaryzacja;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.StrictMode;
 import android.util.Log;
 
@@ -8,14 +11,21 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import static android.content.Context.MODE_PRIVATE;
+
 public class ConnectionClassMSSQL {
+
+
     @SuppressLint("NewApi")
-    public static Connection CONN() {
+    public static Connection CONN(Context context) {
+
+        // shar pref
+        SharedPreferences shar = context.getSharedPreferences(C.NAME_OF_SHAR_PREF,MODE_PRIVATE);
 
         String _user = "androidAccess"; // user naem
         String _pass = "Wiosna2020123..."; // user password
         String _DB = "Inwentaryzacja"; // DB name
-        String _server = "lachmana.dyndns.org:1433"; // serwer url: "lachmana.dyndns.org:1433"
+        String _server = shar.getString(C.MS_SQL_URL_FOR_SHAR, C.MS_SQL_URL_STANDARD);
 
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder()

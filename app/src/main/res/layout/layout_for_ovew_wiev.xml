@@ -10,7 +10,7 @@
         android:id="@+id/imageViewPicture"
         android:layout_width="100dp"
         android:layout_height="100dp"
-        android:scaleType="centerInside"
+        android:scaleType="fitCenter"
         app:srcCompat="@drawable/question_mark" />
 
     <LinearLayout

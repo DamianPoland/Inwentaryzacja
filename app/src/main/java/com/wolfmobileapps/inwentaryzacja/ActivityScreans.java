@@ -2,8 +2,6 @@ package com.wolfmobileapps.inwentaryzacja;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 
@@ -12,7 +10,6 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -21,6 +18,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -39,7 +37,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
@@ -57,7 +54,6 @@ import com.microsoft.signalr.HubConnectionBuilder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -65,8 +61,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -100,6 +94,8 @@ public class ActivityScreans extends AppCompatActivity {
     private EditText editTextDescription;
     private Button buttonSendPhotoToMSSQL;
     private ProgressBar progressBarInDefectWait;
+    private ImageView imagePhotoRotationRight;
+    private ImageView imagePhotoRotationLeft;
 
     // views overView
     private Button buttonBarOverView;
@@ -136,7 +132,6 @@ public class ActivityScreans extends AppCompatActivity {
     private ConnectionClassMSSQL connectionClassMSSQL; //Connection Class Variable
     private Connection connectionMSSQL;
 
-    public static Bitmap currentBitmap;
 
 
     @Override
@@ -167,6 +162,8 @@ public class ActivityScreans extends AppCompatActivity {
         editTextDescription = findViewById(R.id.editTextDescription);
         buttonSendPhotoToMSSQL = findViewById(R.id.buttonSendPhotoToMSSQL);
         progressBarInDefectWait = findViewById(R.id.progressBarInDefectWait);
+        imagePhotoRotationRight = findViewById(R.id.imagePhotoRotationRight);
+        imagePhotoRotationLeft = findViewById(R.id.imagePhotoRotationLeft);
 
         // views overView
         buttonBarOverView = findViewById(R.id.buttonBarOverView);
@@ -175,7 +172,10 @@ public class ActivityScreans extends AppCompatActivity {
         progressBarInOverViewWait = findViewById(R.id.progressBarInOverViewWait);
 
         // shar pref
-        shar = getSharedPreferences(C.NAME_OF_SHAR_PREF,MODE_PRIVATE);
+        shar = getSharedPreferences(C.NAME_OF_SHAR_PREF, MODE_PRIVATE);
+
+        // titule action bar
+        getSupportActionBar().setTitle(shar.getString(C.NAME_OF_USER, ""));
 
         // notification cannel
         createNotificationChannel();
@@ -188,21 +188,6 @@ public class ActivityScreans extends AppCompatActivity {
 
         // start connectivity listener - start and stop EWERYTHING !
         startConnectivityManager();
-
-        // list and adapter for over View
-        listOverView = new ArrayList<>();
-        adapterOverView = new OverWiewArrayAdapter(this, 0 , listOverView);
-        listViewOverView.setAdapter(adapterOverView);
-        listViewOverView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-                // start activity to show image in big screen
-                currentBitmap = listOverView.get(position).getPictureSQLData(); // put image to static variable
-                startActivity(new Intent(ActivityScreans.this, ActivityShowImage.class));
-            }
-        });
-
 
         // SECTION: BUTTONS BAR TO NAVIGATE  _________________________________________________________________________________________
         buttonBarScaner.setOnClickListener(new View.OnClickListener() {
@@ -264,7 +249,7 @@ public class ActivityScreans extends AppCompatActivity {
                     showAlertDialog("Podaj ilość.");
                     return;
                 }
-                if (quantity.length()>4) {
+                if (quantity.length() > 4) {
                     showAlertDialog("Max ilośc to 9999.");
                     return;
                 }
@@ -277,11 +262,16 @@ public class ActivityScreans extends AppCompatActivity {
                 Log.d(TAG, "buttonScanSendDataToSignalR, onClick: codeFromScanner: " + codeFromScanner + ", quantityInteger: " + quantityInteger);
 
                 // send data to signalR
-                if (hubConnection != null) {
+                try {
                     Single<Boolean> exc = hubConnection.invoke(Boolean.class, "ScannedItem", codeFromScanner, quantityInteger); // true or false answer from signalR is random
                     exc.filter((Boolean x) -> Boolean.class.isInstance(x))
                             .cast(Boolean.class)
                             .subscribe((Boolean x) -> scannerDataResult(x)); // function to manage answer
+                } catch (Exception e) {
+                    Log.d(TAG, "buttonScanSendDataToSignalR, Exception: " + e);
+
+                    // if catch exception than wait waitTime and try again connect to SignalR
+                    startSignalRAgain();
                 }
             }
         });
@@ -293,6 +283,45 @@ public class ActivityScreans extends AppCompatActivity {
             public void onClick(View v) {
                 // take picture from camera
                 dispatchTakePictureIntent();
+            }
+        });
+
+        imagePhotoRotationLeft.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (imageBitmap != null) {
+                    // rotation left 90 deg
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(270);
+                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(imageBitmap, imageBitmap.getWidth(), imageBitmap.getHeight(), true);
+                    imageBitmap = Bitmap.createBitmap(scaledBitmap, 0, 0, scaledBitmap.getWidth(), scaledBitmap.getHeight(), matrix, true);
+
+                    //set bitmap in image view
+                    imageViewOfPhotoFromCamera.setImageBitmap(imageBitmap);
+
+                } else {
+                    Toast.makeText(ActivityScreans.this, "Najpierw wybierz zdjęcie.", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+        });
+
+        imagePhotoRotationRight.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (imageBitmap != null) {
+                    // rotation right 90 deg
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(90);
+                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(imageBitmap, imageBitmap.getWidth(), imageBitmap.getHeight(), true);
+                    imageBitmap = Bitmap.createBitmap(scaledBitmap, 0, 0, scaledBitmap.getWidth(), scaledBitmap.getHeight(), matrix, true);
+
+                    //set bitmap in image view
+                    imageViewOfPhotoFromCamera.setImageBitmap(imageBitmap);
+
+                } else {
+                    Toast.makeText(ActivityScreans.this, "Najpierw wybierz zdjęcie.", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -312,11 +341,11 @@ public class ActivityScreans extends AppCompatActivity {
                         showAlertDialog("Dodaj zdjęcie");
                         return;
                     }
-                    if (editTextDescription.getText().toString().equals("")){
+                    if (editTextDescription.getText().toString().equals("")) {
                         showAlertDialog("Dodaj opis");
                         return;
                     }
-                    if (editTextDescription.getText().toString().length() > 99){
+                    if (editTextDescription.getText().toString().length() > 99) {
                         showAlertDialog("Opis jest za długi (max 99 znaków)");
                         return;
                     }
@@ -325,79 +354,109 @@ public class ActivityScreans extends AppCompatActivity {
                     buttonSendPhotoToMSSQL.setVisibility(View.GONE);
                     progressBarInDefectWait.setVisibility(View.VISIBLE);
 
-                        // 1. dateTime - must be format: "YYYY-mm-dd hh:mm:ss"
-                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-                        sdf.setTimeZone(TimeZone.getTimeZone("GMT+1"));
-                        String dateTime = sdf.format(new Date(System.currentTimeMillis()));
+                    // 1. dateTime - must be format: "YYYY-mm-dd hh:mm:ss"
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+                    sdf.setTimeZone(TimeZone.getTimeZone("GMT+1"));
+                    String dateTime = sdf.format(new Date(System.currentTimeMillis()));
 
-                        // 2. description
-                        String description = editTextDescription.getText().toString();
+                    // 2. description
+                    String description = editTextDescription.getText().toString();
 
-                        // 3. image
-                        Bitmap pictureFromView = imageBitmap; // bitmap
-                        // bitmap into byte[]
-                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                        pictureFromView.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-                        byte[] bArray = bos.toByteArray();
+                    // 3. image - normal size
+                    Bitmap pictureFromView = imageBitmap; // bitmap
+                    // bitmap into byte[]
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    pictureFromView.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+                    byte[] bArray = bos.toByteArray();
+                    Log.d(TAG, "buttonSendPhotoToMSSQL, bArray.length: " + bArray.length);
 
-                        // 4. user name from shar
-                        String userName = shar.getString(C.NAME_OF_USER, "");
+                    // 4. user name from shar
+                    String userName = shar.getString(C.NAME_OF_USER, "");
 
-                        new Thread(new Runnable() { // NOT in UI thread
-                            @Override
-                            public void run() {
+                    // 5. image - small size
+                    // get size picture resized
+                    int bitmapHeight = imageBitmap.getHeight();
+                    int bitmapWidth = imageBitmap.getWidth();
+                    int bitmapHeightResized = 100; // put Height of picture Resized - change only here
+                    int bitmapWidthResized = (bitmapHeightResized * bitmapWidth) / bitmapHeight;
+                    // resize bitmap to small picture
+                    Bitmap pictureFromViewResized = Bitmap.createScaledBitmap(imageBitmap, bitmapWidthResized, bitmapHeightResized, true);
+                    // bitmap into byte[]
+                    ByteArrayOutputStream bosResized = new ByteArrayOutputStream();
+                    pictureFromViewResized.compress(Bitmap.CompressFormat.JPEG, 100, bosResized);
+                    byte[] bArrayResized = bosResized.toByteArray();
+                    Log.d(TAG, "buttonSendPhotoToMSSQL, bArrayResized.length 2: " + bArrayResized.length);
 
-                                // execute query and get result
-                                try {
-                                    // create query
-                                    PreparedStatement preparedStatement = connectionMSSQL.prepareStatement("INSERT INTO dbo.androidTest(dateTime, description, picture, userName) VALUES (?, ?, ?, ?)");
-                                    preparedStatement.setString(1, dateTime);
-                                    preparedStatement.setString(2, description);
-                                    preparedStatement.setBytes(3, bArray);
-                                    preparedStatement.setString(4, userName);
+                    new Thread(new Runnable() { // NOT in UI thread
+                        @Override
+                        public void run() {
 
-                                    resultInt = preparedStatement.executeUpdate(); // result is OK if 1
-                                    //boolean resultInt = preparedStatement.execute(); // result is OK if true - don't work
-                                    preparedStatement.close(); // close
-                                } catch (SQLException e) {
-                                    error = e.toString();
-                                    Log.d(TAG, "onCreate: SQLException: " + error);
-                                }
+                            // execute query and get result
+                            try {
+                                // create query
+                                PreparedStatement preparedStatement = connectionMSSQL.prepareStatement("INSERT INTO dbo.androidTest(dateTime, description, picture, miniature, userName) VALUES (?, ?, ?, ?, ?)");
+                                preparedStatement.setString(1, dateTime);
+                                preparedStatement.setString(2, description);
+                                preparedStatement.setBytes(3, bArray);
+                                preparedStatement.setBytes(4, bArrayResized);
+                                preparedStatement.setString(5, userName);
 
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() { //in UI thread
-
-                                        if (resultInt == 0) { // resultInt = 0 - ERROR
-                                            showAlertDialog("Nie wysłano wiadomości \n\nError: " + error);
-
-                                            // change color of background for time
-                                            changeBackgroudColorForTimeInSec(1);
-
-                                        } else { // resultInt = 1 - SUCCES
-                                            Toast.makeText(ActivityScreans.this, "Wiadomość wysłana.", Toast.LENGTH_SHORT).show();
-
-                                            // clear views
-                                            editTextDescription.setText("");
-                                            imageViewOfPhotoFromCamera.setImageResource(R.drawable.question_mark);
-                                        }
-
-                                        // hide progress bar and show button Sent
-                                        buttonSendPhotoToMSSQL.setVisibility(View.VISIBLE);
-                                        progressBarInDefectWait.setVisibility(View.GONE);
-
-                                    }
-                                });
+                                resultInt = preparedStatement.executeUpdate(); // result is OK if 1
+                                //boolean resultInt = preparedStatement.execute(); // result is OK if true - don't work
+                                preparedStatement.close(); // close
+                            } catch (SQLException e) {
+                                error = e.toString();
+                                Log.d(TAG, "onCreate: SQLException: " + error);
                             }
-                        }).start();
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() { //in UI thread
+
+                                    if (resultInt == 0) { // resultInt = 0 - ERROR
+                                        showAlertDialog("Nie wysłano wiadomości \n\nError: " + error);
+
+                                        // change color of background for time
+                                        changeBackgroudColorForTimeInSec(1);
+
+                                    } else { // resultInt = 1 - SUCCES
+                                        Toast.makeText(ActivityScreans.this, "Wiadomość wysłana.", Toast.LENGTH_SHORT).show();
+
+                                        // clear views
+                                        editTextDescription.setText("");
+                                        imageViewOfPhotoFromCamera.setImageResource(R.drawable.question_mark);
+                                        imageBitmap = null;
+                                    }
+
+                                    // hide progress bar and show button Sent
+                                    buttonSendPhotoToMSSQL.setVisibility(View.VISIBLE);
+                                    progressBarInDefectWait.setVisibility(View.GONE);
+
+                                }
+                            });
+                        }
+                    }).start();
                 }
             }
         });
 
         // SECTION: OVERVIEW ____________________________________________________________________________________________
 
+        // list and adapter for over View
+        listOverView = new ArrayList<>();
+        adapterOverView = new OverWiewArrayAdapter(this, 0, listOverView);
+        listViewOverView.setAdapter(adapterOverView);
+        listViewOverView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-
+                // start activity to show image in big screen
+                String currentID = listOverView.get(position).getIdSQLData(); // put image to static variable
+                Intent intentToShowBigPicture = new Intent(ActivityScreans.this, ActivityShowImage.class);
+                intentToShowBigPicture.putExtra("intentToShowBigPicture", currentID);
+                startActivity(intentToShowBigPicture);
+            }
+        });
 
     }
     // END onCreate_________________________________________________________________________________________________________________________________________________________________
@@ -420,14 +479,12 @@ public class ActivityScreans extends AppCompatActivity {
                         //hide linLayScreansNoInternetConnection - hide inofrmation NO internet
                         linLayScreansNoInternetConnection.setVisibility(View.GONE);
 
-                        // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect
+                        // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect, start service with notifications - start after SignalR connection available - if no than try again
                         startSignalR();
 
                         // start connection to MS SQL
                         startConnectionToMSSQL();
 
-                        //start service with notifications
-                        startService();
                     }
                 });
             }
@@ -470,9 +527,10 @@ public class ActivityScreans extends AppCompatActivity {
     // start connection signalR
     public void startSignalR() {
 
+
         try {
             // 1. built connection
-            hubConnection = HubConnectionBuilder.create(C.SERWER_URL).build();
+            hubConnection = HubConnectionBuilder.create(shar.getString(C.SIGNAL_R_URL_FOR_SHAR, C.SIGNAL_R_URL_STANDARD)).build();
 
             // 2. start connection
             hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
@@ -482,28 +540,86 @@ public class ActivityScreans extends AppCompatActivity {
             linLayScreansConnectingSignalR.setVisibility(View.GONE); // hide view SignalR connection ...
             showViewsIfAllConnectionsAreConnected(); // func to start main view
 
+            //start service with notifications - start after SignalR connection available - if no than try again
+            startService();
+
 
         } catch (Exception e) { // cath if hubConnection.start() is not possible
-            Log.d(TAG, "ActivityLogin, startSignalR: Exception: " + e);
-            Toast.makeText(this, "SignalR brak połączenia \nException: " + e, Toast.LENGTH_LONG).show();
+            Log.d(TAG, "ActivityScreans, startSignalR: Exception: " + e);
+            Toast.makeText(this, "SignalR brak połączenia", Toast.LENGTH_SHORT).show();
+
+            // if catch exception than wait waitTime and try again connect to SignalR
+            startSignalRAgain();
         }
     }
 
+    // if catch exception than wait waitTime and try again connect to SignalR
+    public void startSignalRAgain() {
+
+        // show buttonScanSendDataToSignalR and hide progressBarScanWait
+        progressBarScanWait.setVisibility(View.GONE);
+        buttonScanSendDataToSignalR.setVisibility(View.VISIBLE);
+
+        // show and hide informations
+        linLayScreansConnectingSignalR.setVisibility(View.VISIBLE); // show view SignalR connection ...
+        linearLayoutBottomButtons.setVisibility(View.GONE); // hide bottom buttons
+        scroolViewScanner.setVisibility(View.GONE); // hide view scanner
+        scroolViewDefect.setVisibility(View.GONE); // hide view deffect
+        linLayOverView.setVisibility(View.GONE); // hide view Over View
+
+        Handler handler = new Handler();
+        long waitTime = C.WAITING_TIME * 1000; // waitTime
+        handler.postDelayed(new Runnable() {
+            public void run() {
+
+                // start signalR after waitTime
+                startSignalR();
+            }
+        }, waitTime); // delay
+    }
+
+
     // start connection to MS SQL
-    public void startConnectionToMSSQL () {
+    public void startConnectionToMSSQL() {
 
-        connectionClassMSSQL = new ConnectionClassMSSQL(); // Connection Class MS SQL Initialization
-        connectionMSSQL = connectionClassMSSQL.CONN(); //Connection Object
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
 
-        if (connectionMSSQL == null) {  // if is NO connection
-            Log.d(TAG, "startConnectionToMSSQL: connection NOT CONNECTED");
-            Toast.makeText(this, "MS SQL brak połączenia", Toast.LENGTH_LONG).show();
-        } else { // if connection is CONNECTED
-            Log.d(TAG, "startConnectionToMSSQL: connection CONNECTED");
-            isMSSQLConnected = true; // if change for true than can show views
-            linLayScreansConnectingMSSQL.setVisibility(View.GONE); // hide view MS SQL connection ...
-            showViewsIfAllConnectionsAreConnected(); // func to start main view
-        }
+                connectionClassMSSQL = new ConnectionClassMSSQL(); // Connection Class MS SQL Initialization
+                connectionMSSQL = connectionClassMSSQL.CONN(ActivityScreans.this); //Connection Object, if connection is not conected than return NULL
+
+                Log.d(TAG, "startConnectionToMSSQL, connectionMSSQL: " + connectionMSSQL);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        if (connectionMSSQL == null) { // if is NO connection
+                            Log.d(TAG, "startConnectionToMSSQL: connection NOT CONNECTED");
+                            Toast.makeText(ActivityScreans.this, "MS SQL brak połączenia", Toast.LENGTH_LONG).show();
+
+                            // if is no connection than try again connect after C.WAITING_TIME
+                            Handler handler = new Handler();
+                            long waitTime = C.WAITING_TIME * 1000; // waitTime
+                            handler.postDelayed(new Runnable() {
+                                public void run() {
+
+                                    // start Connection To MSSQL after waitTime
+                                    startConnectionToMSSQL();
+                                }
+                            }, waitTime); // delay
+
+                        } else { // if connection is CONNECTED
+                            Log.d(TAG, "startConnectionToMSSQL: connection CONNECTED");
+                            isMSSQLConnected = true; // if change for true than can show views
+                            linLayScreansConnectingMSSQL.setVisibility(View.GONE); // hide view MS SQL connection ...
+                            showViewsIfAllConnectionsAreConnected(); // func to start main view
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     // start service
@@ -537,7 +653,7 @@ public class ActivityScreans extends AppCompatActivity {
     // SECTION: SCANNER  _____________________________________________________________________________________________
 
     public void scannerDataResult(boolean result) {
-        Log.d(TAG, "scannerDataResult: " +result);
+        Log.d(TAG, "scannerDataResult: " + result);
 
         // must be on UI thread
         runOnUiThread(new Runnable() {
@@ -596,27 +712,28 @@ public class ActivityScreans extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        // camera photo
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            imageUri = Uri.fromFile(new File(mCameraFileName)); //zwraca zdjęcie z aparatu jako ścieszkę uri
-            Log.d(TAG, "onActivityResult: imageUri z aparatu: " + imageUri);
-        }
-
-        // save picture to imageBitmap from taken mageUri from camera
         try {
+
+            // camera photo
+            if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+                imageUri = Uri.fromFile(new File(mCameraFileName)); //zwraca zdjęcie z aparatu jako ścieszkę uri
+                Log.d(TAG, "onActivityResult: imageUri z aparatu: " + imageUri);
+            }
+
+            // save picture to imageBitmap from taken mageUri from camera
             imageBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
             imageViewOfPhotoFromCamera.setImageBitmap(imageBitmap); // set imageBitmap in image View
             Log.d(TAG, "onActivityResult, imageBitmap SAVED and set in imageView");
+
         } catch (Exception e) {
             Log.d(TAG, "onActivityResult, ERROr, imageBitmap NOT saved because e: " + e);
         }
     }
 
 
-
     // SECTION: OVERVIEW _________________________________________________________________________________________________________________
     // get data from serwer MS SQL
-    public void getDataFromServer () {
+    public void getDataFromServer() {
 
         //can't start new request if old one is not finish
         if (isGetingDataFromMSSQL) {
@@ -646,12 +763,12 @@ public class ActivityScreans extends AppCompatActivity {
                     try {
 
                         // set number of rows taken from MSSQL and show in list view
-                        int numberOFRowsToShow = 5;
+                        int numberOFRowsToShow = 20;
 
                         Statement statement = connectionMSSQL.createStatement();
                         //ResultSet result = statement.executeQuery("SELECT indx WHERE userName='Jan.kowalski'"); // query for indx,
                         //ResultSet result = statement.executeQuery("SELECT indx,dateTime,description,picture FROM dbo.androidTest"); // query to MS SQL for all rows
-                        ResultSet result = statement.executeQuery("SELECT TOP " + numberOFRowsToShow + " indx,dateTime,description,picture FROM dbo.androidTest ORDER BY indx DESC"); // query to MS SQL for last numberOFRowsToShow rows
+                        ResultSet result = statement.executeQuery("SELECT TOP " + numberOFRowsToShow + " indx,dateTime,description,miniature FROM dbo.androidTest ORDER BY indx DESC"); // query to MS SQL for last numberOFRowsToShow rows
 
                         // put data to array
                         for (int i = 0; i < numberOFRowsToShow; i++) { // number of rows to show - can be more than is in DB - won't be crash - olny thow exception
@@ -660,19 +777,20 @@ public class ActivityScreans extends AppCompatActivity {
                             String dateTimeFromResult = result.getString("dateTime"); // take dateTime from MS SQL
                             String descriptionFromResult = result.getString("description"); // take description from MS SQL
 
-                            // get picture
-                            byte[] bArrayTakenFromMSSQL = result.getBytes("picture"); // take picture from MS SQL
-                            // set picture
-                            Bitmap bitmapFromResult = null;
-                            if (bArrayTakenFromMSSQL != null){
-                                bitmapFromResult = BitmapFactory.decodeByteArray(bArrayTakenFromMSSQL, 0 ,bArrayTakenFromMSSQL.length); // byte[] into bitmap
+                            // get picture miniature
+                            byte[] bArrayMiniatureTakenFromMSSQL = result.getBytes("miniature"); // take picture miniature from MS SQL
+                            // set picture miniature
+                            Bitmap bitmapFromResultMiniature = null;
+                            if (bArrayMiniatureTakenFromMSSQL != null) {
+                                bitmapFromResultMiniature = BitmapFactory.decodeByteArray(bArrayMiniatureTakenFromMSSQL, 0, bArrayMiniatureTakenFromMSSQL.length); // byte[] into bitmap (miniature)
                             }
 
                             // add element to list view
-                            listOverView.add(new OverViewItem(bitmapFromResult,indxFromResult,dateTimeFromResult, descriptionFromResult));
+                            listOverView.add(new OverViewItem(bitmapFromResultMiniature, indxFromResult, dateTimeFromResult, descriptionFromResult));
 
                             //result
-                            Log.d(TAG, "getDataFromServer: RESULT: " + "indxFromResult: " + indxFromResult + ", dateTimeFromResult: " + dateTimeFromResult + ", descriptionFromResult: " + descriptionFromResult  +  ", number of row: " + i);
+                            Log.d(TAG, "getDataFromServer: RESULT: " + "indxFromResult: " + indxFromResult + ", dateTimeFromResult: " + dateTimeFromResult + ", descriptionFromResult: " + descriptionFromResult + ", number of row: " + i);
+
                             Log.d(TAG, "getDataFromServer: listOverView.size(): " + listOverView.size());
                         }
 
@@ -706,7 +824,7 @@ public class ActivityScreans extends AppCompatActivity {
 
     // change color of background for time
     public void changeBackgroudColorForTimeInSec(double time) {
-        long timeLong = (long) (time*1000);
+        long timeLong = (long) (time * 1000);
 
         // make vibration
         Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -749,6 +867,7 @@ public class ActivityScreans extends AppCompatActivity {
         }
         return true;
     }
+
     // show alert dialog
     public void showAlertDialog(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(ActivityScreans.this);
@@ -764,7 +883,7 @@ public class ActivityScreans extends AppCompatActivity {
     }
 
     // SECTION: BUTTONS BAR TO NAVIGATE  _______________________________________________________________________________________________________
-    public void setScannerSection () {
+    public void setScannerSection() {
         // set liner layouts visibility
         linearLayoutBottomButtons.setVisibility(View.VISIBLE);
         scroolViewScanner.setVisibility(View.VISIBLE);
@@ -772,14 +891,15 @@ public class ActivityScreans extends AppCompatActivity {
         linLayOverView.setVisibility(View.GONE);
 
         // set buttons background
-        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryDarkBlue900));
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorPrimaryDarkBlue900));
         buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
-        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
     }
-    public void setDeffectSection () {
+
+    public void setDeffectSection() {
         // set liner layouts visibility
         linearLayoutBottomButtons.setVisibility(View.VISIBLE);
         scroolViewScanner.setVisibility(View.GONE);
@@ -787,14 +907,15 @@ public class ActivityScreans extends AppCompatActivity {
         linLayOverView.setVisibility(View.GONE);
 
         // set buttons background
-        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryDarkBlue900));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorPrimaryDarkBlue900));
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
-        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
     }
-    public void setOverViewSection () {
+
+    public void setOverViewSection() {
 
         // set liner layouts visibility
         linearLayoutBottomButtons.setVisibility(View.VISIBLE);
@@ -803,11 +924,11 @@ public class ActivityScreans extends AppCompatActivity {
         linLayOverView.setVisibility(View.VISIBLE);
 
         // set buttons background
-        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorBackgroundGray200));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
-        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this,R.color.colorPrimaryDarkBlue900));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorPrimaryDarkBlue900));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
 
         // get data from server
