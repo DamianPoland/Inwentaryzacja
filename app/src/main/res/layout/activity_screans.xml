@@ -100,6 +100,13 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Kod kreskowy:"
+                android:textColor="@color/colorPrimaryDarkBlue900" />
+
             <EditText
                 android:id="@+id/editTextScanCode"
                 android:layout_width="match_parent"
@@ -107,22 +114,6 @@
                 android:hint="Start/Stop Scan"
                 android:inputType="text"
                 android:imeOptions="actionSend"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Pobrany kod:"
-                android:textColor="@color/colorPrimaryDarkBlue900" />
-
-            <TextView
-                android:id="@+id/textViewTakenCode"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text=""
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"/>
 
             <TextView
                 android:layout_width="match_parent"

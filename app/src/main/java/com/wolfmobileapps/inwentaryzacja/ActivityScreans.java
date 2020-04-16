@@ -81,7 +81,6 @@ public class ActivityScreans extends AppCompatActivity {
     private Button buttonBarScaner;
     private ScrollView scroolViewScanner;
     private EditText editTextScanCode;
-    private TextView textViewTakenCode;
     private EditText editTextScanQuantity;
     private Button buttonScanSendDataToSignalR;
     private ProgressBar progressBarScanWait;
@@ -149,7 +148,6 @@ public class ActivityScreans extends AppCompatActivity {
         buttonBarScaner = findViewById(R.id.buttonBarScaner);
         scroolViewScanner = findViewById(R.id.scroolViewScanner);
         editTextScanCode = findViewById(R.id.editTextScanCode);
-        textViewTakenCode = findViewById(R.id.textViewTakenCode);
         editTextScanQuantity = findViewById(R.id.editTextScanQuantity);
         buttonScanSendDataToSignalR = findViewById(R.id.buttonScanSendDataToSignalR);
         progressBarScanWait = findViewById(R.id.progressBarScanWait);
@@ -213,22 +211,22 @@ public class ActivityScreans extends AppCompatActivity {
         // SECTION: SCANNER ____________________________________________________________________________________________
 
         // when press actionSend (enter) than do this - scanner press enter itself ???
-        editTextScanCode.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                boolean handled = false;
-                if (actionId == EditorInfo.IME_ACTION_SEND) {
-                    Log.d(TAG, "onEditorAction: editTextScanCode.setOnEditorActionListener:");
-
-                    // get scanned code from editTextScanCode and put to textViewTakenCode
-                    String codeFromEditText = editTextScanCode.getText().toString();
-                    textViewTakenCode.setText(codeFromEditText);
-
-                    handled = true;
-                }
-                return handled;
-            }
-        });
+//        editTextScanCode.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+//            @Override
+//            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+//                boolean handled = false;
+//                if (actionId == EditorInfo.IME_ACTION_SEND) {
+//                    Log.d(TAG, "onEditorAction: editTextScanCode.setOnEditorActionListener:");
+//
+//                    // get scanned code from editTextScanCode and put to textViewTakenCode
+//                    String codeFromEditText = editTextScanCode.getText().toString();
+//                    textViewTakenCode.setText(codeFromEditText);
+//
+//                    handled = true;
+//                }
+//                return handled;
+//            }
+//        });
 
         // button send data
         buttonScanSendDataToSignalR.setOnClickListener(new View.OnClickListener() {
@@ -237,7 +235,7 @@ public class ActivityScreans extends AppCompatActivity {
             public void onClick(View v) {
 
                 // get code
-                String codeFromScanner = textViewTakenCode.getText().toString();
+                String codeFromScanner = editTextScanCode.getText().toString();
                 if (codeFromScanner.equals("")) {
                     showAlertDialog("Zeskanuj produkt");
                     return;
@@ -669,9 +667,9 @@ public class ActivityScreans extends AppCompatActivity {
                     Toast.makeText(ActivityScreans.this, "Wysłano.", Toast.LENGTH_SHORT).show();
 
                     // clear view
-                    editTextScanCode.setText(""); // clear edit text
-                    textViewTakenCode.setText(""); // clear text View
                     editTextScanQuantity.setText(""); // clear edit text
+                    editTextScanCode.setText(""); // clear edit text
+                    editTextScanCode.requestFocus(); // after send to signalR start editing editTextScanCode
 
                 } else {
                     showAlertDialog("Błąd! \nNie dostarczono.");
@@ -1001,4 +999,13 @@ public class ActivityScreans extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onBackPressed() {
+
+        // go activity background
+        Intent i = new Intent();
+        i.setAction(Intent.ACTION_MAIN);
+        i.addCategory(Intent.CATEGORY_HOME);
+        this.startActivity(i);
+    }
 }
