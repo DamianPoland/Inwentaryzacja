@@ -49,11 +49,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.hierynomus.msdtyp.AccessMask;
+import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation;
+import com.hierynomus.mssmb2.SMB2CreateDisposition;
+import com.hierynomus.mssmb2.SMB2ShareAccess;
+import com.hierynomus.mssmb2.SMBApiException;
+import com.hierynomus.smbj.SMBClient;
+import com.hierynomus.smbj.auth.AuthenticationContext;
+import com.hierynomus.smbj.session.Session;
+import com.hierynomus.smbj.share.DiskShare;
 import com.microsoft.signalr.HubConnection;
 import com.microsoft.signalr.HubConnectionBuilder;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -61,8 +73,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import io.reactivex.Single;
 
@@ -103,6 +118,16 @@ public class ActivityScreans extends AppCompatActivity {
     private ArrayList<OverViewItem> listOverView;
     private OverWiewArrayAdapter adapterOverView;
     private ProgressBar progressBarInOverViewWait;
+
+    // views sharWin
+    private Button buttonBarShareWin;
+    private ScrollView scroolViewSharWin;
+    private EditText editTextScanCodeSharWin;
+    private TextView textViewScanedCodesToSharWin;
+    private Button buttonScanSendDataToWin;
+    private ImageView buttonScanSendDataToWinSettings;
+    private ProgressBar progressBarSendToWinWait;
+    private LinearLayout linLaySendToWin;
 
     // shar pref
     private SharedPreferences shar;
@@ -169,6 +194,16 @@ public class ActivityScreans extends AppCompatActivity {
         listViewOverView = findViewById(R.id.listViewOverView);
         progressBarInOverViewWait = findViewById(R.id.progressBarInOverViewWait);
 
+        // views sharWin
+        buttonBarShareWin = findViewById(R.id.buttonBarShareWin);
+        scroolViewSharWin = findViewById(R.id.scroolViewSharWin);
+        editTextScanCodeSharWin = findViewById(R.id.editTextScanCodeSharWin);
+        textViewScanedCodesToSharWin = findViewById(R.id.textViewScanedCodesToSharWin);
+        buttonScanSendDataToWin = findViewById(R.id.buttonScanSendDataToWin);
+        buttonScanSendDataToWinSettings = findViewById(R.id.buttonScanSendDataToWinSettings);
+        progressBarSendToWinWait = findViewById(R.id.progressBarSendToWinWait);
+        linLaySendToWin = findViewById(R.id.linLaySendToWin);
+
         // shar pref
         shar = getSharedPreferences(C.NAME_OF_SHAR_PREF, MODE_PRIVATE);
 
@@ -206,28 +241,15 @@ public class ActivityScreans extends AppCompatActivity {
                 setOverViewSection();
             }
         });
+        buttonBarShareWin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setShareWinSection();
+            }
+        });
 
 
         // SECTION: SCANNER ____________________________________________________________________________________________
-
-        // when press actionSend (enter) than do this - scanner press enter itself ???
-//        editTextScanCode.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-//            @Override
-//            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-//                boolean handled = false;
-//                if (actionId == EditorInfo.IME_ACTION_SEND) {
-//                    Log.d(TAG, "onEditorAction: editTextScanCode.setOnEditorActionListener:");
-//
-//                    // get scanned code from editTextScanCode and put to textViewTakenCode
-//                    String codeFromEditText = editTextScanCode.getText().toString();
-//                    textViewTakenCode.setText(codeFromEditText);
-//
-//                    handled = true;
-//                }
-//                return handled;
-//            }
-//        });
-
         // button send data
         buttonScanSendDataToSignalR.setOnClickListener(new View.OnClickListener() {
             @SuppressLint("CheckResult")
@@ -456,7 +478,46 @@ public class ActivityScreans extends AppCompatActivity {
             }
         });
 
+        // SECTION: SHAR WINDOWS ____________________________________________________________________________________________
+
+        // when press actionSend (enter) than do this
+        editTextScanCodeSharWin.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                String textFromEditText = editTextScanCodeSharWin.getText().toString();
+                Log.d(TAG, "onEditorAction: ___________________: " + textFromEditText);
+                String currrentText = textViewScanedCodesToSharWin.getText().toString();
+                textViewScanedCodesToSharWin.setText(currrentText + "\n" + textFromEditText);
+                editTextScanCodeSharWin.setText("");
+                return true;
+            }
+        });
+
+        // button to share text in windows
+        buttonScanSendDataToWin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                //get text from text view
+                String textToSave = textViewScanedCodesToSharWin.getText().toString();
+
+                //save text to Windows
+                saveDataInWidows(textToSave);
+            }
+        });
+
+        // button to open shar windows settings
+        buttonScanSendDataToWinSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                // open activity settings
+                startActivity(new Intent(ActivityScreans.this, ActivitySettingsSharWin.class));
+            }
+        });
+
     }
+
     // END onCreate_________________________________________________________________________________________________________________________________________________________________
 
 
@@ -477,11 +538,16 @@ public class ActivityScreans extends AppCompatActivity {
                         //hide linLayScreansNoInternetConnection - hide inofrmation NO internet
                         linLayScreansNoInternetConnection.setVisibility(View.GONE);
 
+                        // TODO: 2/3 (ominięcie połaczeń signal R i MSSQL) zakomentować to co niżej
                         // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect, start service with notifications - start after SignalR connection available - if no than try again
                         startSignalR();
-
                         // start connection to MS SQL
                         startConnectionToMSSQL();
+
+                        // TODO: 3/3 (ominięcie połaczeń signal R i MSSQL) odkomentować to co niżej
+//                        setScannerSection();
+//                        linLayScreansConnectingSignalR.setVisibility(View.GONE);
+//                        linLayScreansConnectingMSSQL.setVisibility(View.GONE);
 
                     }
                 });
@@ -525,14 +591,15 @@ public class ActivityScreans extends AppCompatActivity {
     // start connection signalR
     public void startSignalR() {
 
-
         try {
+
             // 1. built connection
             hubConnection = HubConnectionBuilder.create(shar.getString(C.SIGNAL_R_URL_FOR_SHAR, C.SIGNAL_R_URL_STANDARD)).build();
 
             // 2. start connection
             hubConnection.start().blockingAwait(); // blockingAwait stop and wait to connection
             Log.d(TAG, "startSignalR ConnectionState(): " + hubConnection.getConnectionState());
+
 
             isSignalRConnected = true; // if change for true than can show views
             linLayScreansConnectingSignalR.setVisibility(View.GONE); // hide view SignalR connection ...
@@ -818,6 +885,116 @@ public class ActivityScreans extends AppCompatActivity {
         }
     }
 
+    // SECTION: SHAR WINDOWS _________________________________________________________________________________________________________________
+
+    //save text to Windows
+
+    public void saveDataInWidows(String textToSaveInWin) {
+
+        // show hide buttons
+        linLaySendToWin.setVisibility(View.GONE);
+        progressBarSendToWinWait.setVisibility(View.VISIBLE);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                // vars to SMB connection
+                String hostName = shar.getString(C.WINDOWS_SHARE_HOST_NAME, "192.168.1.104"); // address - dla wifi 192.168.1.104
+                String userName = shar.getString(C.WINDOWS_SHARE_USER_NAME, "TestUser"); // user name with access
+                String password = shar.getString(C.WINDOWS_SHARE_PASSWORD, "TestUser"); // password to access
+                String shareName = shar.getString(C.WINDOWS_SHARE_SHARE_NAME, "SmbTest"); // shared folder
+                String path = shar.getString(C.WINDOWS_SHARE_PATH, ""); // - folder in shared place - can be empty if all
+                String fileName = shar.getString(C.WINDOWS_SHARE_FILE_NAME, "FileExampleName.txt");
+
+                // text to save
+                String textToSave = textToSaveInWin; // text to save
+
+                // init SAMBA client
+                SMBClient client = new SMBClient();
+
+                // set connection
+                try (com.hierynomus.smbj.connection.Connection connection = client.connect(hostName)) { // add hostName
+                    AuthenticationContext ac = new AuthenticationContext(userName, password.toCharArray(), "DOMAIN"); // add userName and Password
+                    Session session = connection.authenticate(ac);
+
+                    // Connect to Share folder
+                    try (DiskShare share = (DiskShare) session.connectShare(shareName)) {
+
+                        // get all files with .txt
+                        for (FileIdBothDirectoryInformation f : share.list(path, "*.TXT")) { // add path to share if needed
+                            System.out.println("File : " + f.getFileName());
+                        }
+
+                        // remove file - try catch - if exist
+                        try {
+                            share.rm(fileName);
+                        } catch (SMBApiException e) {
+                            e.printStackTrace();
+                        }
+
+                        // create or open file - create file if not exist, open if exist
+                        com.hierynomus.smbj.share.File file = share.openFile(fileName, // add file name
+                                new HashSet<>(Arrays.asList(AccessMask.FILE_WRITE_DATA, AccessMask.FILE_READ_DATA)),
+                                null,
+                                SMB2ShareAccess.ALL,
+                                SMB2CreateDisposition.FILE_OPEN_IF, // FILE_OPEN_IF - open if exist and create if not,
+                                null);
+
+                        // write text to file
+                        byte[] b = textToSave.getBytes();
+                        file.write(b, 0); // fileOffset - odsunięcie od początku
+
+                        // read file
+                        InputStream inputStream = file.getInputStream();
+                        String result = new BufferedReader(new InputStreamReader(inputStream)).lines().collect(Collectors.joining("\n"));
+                        Log.d(TAG, "run, read: " + result);
+
+                        // clear textView
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+
+                                // clear textView
+                                textViewScanedCodesToSharWin.setText("");
+
+                                // show hide buttons
+                                linLaySendToWin.setVisibility(View.VISIBLE);
+                                progressBarSendToWinWait.setVisibility(View.GONE);
+
+                                Toast.makeText(ActivityScreans.this, "Wysłano", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
+                        //create folder
+                        //share.mkdir("nowy Folder");
+
+                    } catch (final Exception e) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(ActivityScreans.this, "Exception:\n" + e, Toast.LENGTH_LONG).show();
+                                // show hide buttons
+                                linLaySendToWin.setVisibility(View.VISIBLE);
+                                progressBarSendToWinWait.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(ActivityScreans.this, "Exception:\n" + e, Toast.LENGTH_LONG).show();
+                            // show hide buttons
+                            linLaySendToWin.setVisibility(View.VISIBLE);
+                            progressBarSendToWinWait.setVisibility(View.GONE);
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
     // SECTION: REST _____________________________________________ __________________________________________________________
 
     // change color of background for time
@@ -887,6 +1064,7 @@ public class ActivityScreans extends AppCompatActivity {
         scroolViewScanner.setVisibility(View.VISIBLE);
         scroolViewDefect.setVisibility(View.GONE);
         linLayOverView.setVisibility(View.GONE);
+        scroolViewSharWin.setVisibility(View.GONE);
 
         // set buttons background
         buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorPrimaryDarkBlue900));
@@ -895,6 +1073,8 @@ public class ActivityScreans extends AppCompatActivity {
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
         buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarShareWin.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
+        buttonBarShareWin.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
     }
 
     public void setDeffectSection() {
@@ -903,6 +1083,7 @@ public class ActivityScreans extends AppCompatActivity {
         scroolViewScanner.setVisibility(View.GONE);
         scroolViewDefect.setVisibility(View.VISIBLE);
         linLayOverView.setVisibility(View.GONE);
+        scroolViewSharWin.setVisibility(View.GONE);
 
         // set buttons background
         buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
@@ -911,6 +1092,8 @@ public class ActivityScreans extends AppCompatActivity {
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
         buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarShareWin.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
+        buttonBarShareWin.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
     }
 
     public void setOverViewSection() {
@@ -920,6 +1103,7 @@ public class ActivityScreans extends AppCompatActivity {
         scroolViewScanner.setVisibility(View.GONE);
         scroolViewDefect.setVisibility(View.GONE);
         linLayOverView.setVisibility(View.VISIBLE);
+        scroolViewSharWin.setVisibility(View.GONE);
 
         // set buttons background
         buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
@@ -928,9 +1112,30 @@ public class ActivityScreans extends AppCompatActivity {
         buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
         buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorPrimaryDarkBlue900));
         buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
+        buttonBarShareWin.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
+        buttonBarShareWin.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
 
         // get data from server
         getDataFromServer();
+    }
+
+    public void setShareWinSection() {
+        // set liner layouts visibility
+        linearLayoutBottomButtons.setVisibility(View.VISIBLE);
+        scroolViewScanner.setVisibility(View.GONE);
+        scroolViewDefect.setVisibility(View.GONE);
+        linLayOverView.setVisibility(View.GONE);
+        scroolViewSharWin.setVisibility(View.VISIBLE);
+
+        // set buttons background
+        buttonBarScaner.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
+        buttonBarScaner.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarDefect.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
+        buttonBarDefect.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarOverView.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBackgroundGray200));
+        buttonBarOverView.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorBlack));
+        buttonBarShareWin.setBackgroundColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorPrimaryDarkBlue900));
+        buttonBarShareWin.setTextColor(ContextCompat.getColor(ActivityScreans.this, R.color.colorWhite));
     }
 
     // SECTION: MENU  _______________________________________________________________________________________________________

@@ -46,11 +46,11 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=" SignalR łączenie..."
             android:layout_gravity="center_vertical"
             android:layout_marginStart="16dp"
+            android:text=" SignalR łączenie..."
             android:textColor="@color/colorPrimaryDarkBlue900"
-            android:textSize="20sp"/>
+            android:textSize="20sp" />
 
     </LinearLayout>
 
@@ -72,11 +72,11 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=" MS SQL łączenie..."
             android:layout_gravity="center_vertical"
             android:layout_marginStart="16dp"
+            android:text=" MS SQL łączenie..."
             android:textColor="@color/colorPrimaryDarkBlue900"
-            android:textSize="20sp"/>
+            android:textSize="20sp" />
 
     </LinearLayout>
 
@@ -88,12 +88,12 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/linearLayoutBottomButtons"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:visibility="visible"
-        android:visibility="gone">
+        tools:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -112,8 +112,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Start/Stop Scan"
-                android:inputType="text"
-                android:imeOptions="actionSend"/>
+                android:imeOptions="actionSend"
+                android:inputType="text" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -157,12 +157,12 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/linearLayoutBottomButtons"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:visibility="visible"
-        android:visibility="gone">
+        tools:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -174,9 +174,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="8dp"
                 android:background="@drawable/button_custom_white"
-                android:text="  Zrób zdjęcie  "
-                android:layout_marginBottom="8dp"/>
+                android:text="  Zrób zdjęcie  " />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -186,16 +186,16 @@
                 <ImageView
                     android:id="@+id/imagePhotoRotationLeft"
                     android:layout_width="0dp"
-                    android:layout_weight="1"
                     android:layout_height="40dp"
+                    android:layout_weight="1"
                     android:scaleType="fitCenter"
                     app:srcCompat="@drawable/ic_rotate_left_black_24dp" />
 
                 <ImageView
                     android:id="@+id/imagePhotoRotationRight"
                     android:layout_width="0dp"
-                    android:layout_weight="1"
                     android:layout_height="40dp"
+                    android:layout_weight="1"
                     android:scaleType="fitCenter"
                     app:srcCompat="@drawable/ic_rotate_right_black_24dp" />
 
@@ -215,7 +215,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Dodaj opis"
-                android:textColor="@color/colorPrimaryDarkBlue900"/>
+                android:textColor="@color/colorPrimaryDarkBlue900" />
 
             <EditText
                 android:id="@+id/editTextDescription"
@@ -244,38 +244,125 @@
         </LinearLayout>
     </ScrollView>
 
-        <LinearLayout
-            android:id="@+id/linLayOverView"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="8dp"
-            app:layout_constraintBottom_toTopOf="@+id/linearLayoutBottomButtons"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:visibility="visible"
+    <LinearLayout
+        android:id="@+id/linLayOverView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayoutBottomButtons"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible">
+
+        <ProgressBar
+            android:id="@+id/progressBarInOverViewWait"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:visibility="gone"
+            tools:visibility="visible" />
+
+
+        <ListView
+            android:id="@+id/listViewOverView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"></ListView>
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/scroolViewSharWin"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayoutBottomButtons"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:orientation="vertical">
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Kod kreskowy:"
+                android:textColor="@color/colorPrimaryDarkBlue900" />
+
+            <EditText
+                android:id="@+id/editTextScanCodeSharWin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Start/Stop Scan"
+                android:imeOptions="actionSend"
+                android:inputType="text" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Zeskanowane kody:"
+                android:textColor="@color/colorPrimaryDarkBlue900" />
+
+            <TextView
+                android:id="@+id/textViewScanedCodesToSharWin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:hint="0"
+                android:inputType="textMultiLine"
+                android:textSize="16sp" />
+
+            <LinearLayout
+                android:id="@+id/linLaySendToWin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/buttonScanSendDataToWin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/button_custom_white"
+                    android:text="  Wyślij  " />
+
+                <ImageView
+                    android:id="@+id/buttonScanSendDataToWinSettings"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="16dp"
+                    android:background="@drawable/ic_settings_black_24dp"
+                    android:text="  Settings  " />
+
+            </LinearLayout>
+
             <ProgressBar
-                android:id="@+id/progressBarInOverViewWait"
+                android:id="@+id/progressBarSendToWinWait"
                 style="?android:attr/progressBarStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
                 android:visibility="gone"
                 tools:visibility="visible" />
 
-
-            <ListView
-                android:id="@+id/listViewOverView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-            </ListView>
         </LinearLayout>
+    </ScrollView>
 
 
     <LinearLayout
@@ -283,10 +370,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:layout_editor_absoluteX="4dp"
-        tools:visibility="visible"
-        android:visibility="gone">
+        tools:visibility="visible">
 
         <Button
             android:id="@+id/buttonBarScaner"
@@ -294,8 +381,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@color/colorBackgroundGray200"
-            android:padding="8dp"
-            android:text="Skanowanie \nkodu" />
+            android:padding="2dp"
+            android:text="Skanowanie \nkodu"
+            android:textSize="10sp" />
 
         <Button
             android:id="@+id/buttonBarDefect"
@@ -303,8 +391,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@color/colorBackgroundGray200"
-            android:padding="8dp"
-            android:text="Zgłoszenie \nwady" />
+            android:padding="2dp"
+            android:text="Zgłoszenie \nwady"
+            android:textSize="10sp" />
 
         <Button
             android:id="@+id/buttonBarOverView"
@@ -312,9 +401,19 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@color/colorBackgroundGray200"
-            android:padding="8dp"
-            android:text="Przegląd \nzgłoszeń" />
+            android:padding="2dp"
+            android:text="Przegląd \nzgłoszeń"
+            android:textSize="10sp" />
 
+        <Button
+            android:id="@+id/buttonBarShareWin"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/colorBackgroundGray200"
+            android:padding="2dp"
+            android:text="Udostępnij \nna Win"
+            android:textSize="10sp" />
     </LinearLayout>
 
 

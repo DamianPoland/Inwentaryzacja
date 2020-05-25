@@ -20,4 +20,14 @@ public class C {
 
     public static final int WAITING_TIME = 5; // waiting time
 
+
+
+    // for shar in Windows
+    public static final String WINDOWS_SHARE_HOST_NAME = "windows share host name";
+    public static final String WINDOWS_SHARE_USER_NAME = "windows share user name";
+    public static final String WINDOWS_SHARE_PASSWORD = "windows share password";
+    public static final String WINDOWS_SHARE_SHARE_NAME = "windows share share name";
+    public static final String WINDOWS_SHARE_PATH = "windows share path";
+    public static final String WINDOWS_SHARE_FILE_NAME = "windows share file name";
+
 }

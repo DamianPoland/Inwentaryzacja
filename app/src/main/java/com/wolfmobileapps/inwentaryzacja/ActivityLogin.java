@@ -78,7 +78,7 @@ public class ActivityLogin extends AppCompatActivity {
         // shar pref
         shar = getSharedPreferences(C.NAME_OF_SHAR_PREF, MODE_PRIVATE);
 
-        // TODO:  open second activity if was looged before - Ckient don't want that
+        // open second activity if was looged before - Client don't want that
 //        boolean userIsLogged = shar.getBoolean(C.USER_IS_LOGGED, false);
 //        if (userIsLogged) {
 //
@@ -86,6 +86,12 @@ public class ActivityLogin extends AppCompatActivity {
 //            startNextActivity();
 //        }
 
+
+        // TODO: 1/3 (ominięcie połaczeń signal R i MSSQL) odkomentować to co niżej
+//        startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
+//        if (1==1){
+//            return;
+//        }
 
 
 

@@ -10,31 +10,29 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-
     <uses-feature
         android:name="android.hardware.camera"
         android:required="true" />
 
     <application
-        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
-
-
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+        <activity android:name=".ActivitySettingsSharWin"
+            android:screenOrientation="portrait"></activity>
 
         <service
             android:name=".ServiceNotifications"
             android:enabled="true"
             android:exported="true" />
 
-        <activity android:name=".ActivityShowImage"
-            android:screenOrientation="portrait" >
-
-        </activity>
+        <activity
+            android:name=".ActivityShowImage"
+            android:screenOrientation="portrait"></activity>
         <activity
             android:name=".ActivityAlertFromService"
             android:screenOrientation="portrait" />
