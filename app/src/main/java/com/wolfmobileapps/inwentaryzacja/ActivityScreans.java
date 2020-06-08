@@ -539,15 +539,15 @@ public class ActivityScreans extends AppCompatActivity {
                         linLayScreansNoInternetConnection.setVisibility(View.GONE);
 
                         // TODO: 2/3 (ominięcie połaczeń signal R i MSSQL) zakomentować to co niżej
-                        // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect, start service with notifications - start after SignalR connection available - if no than try again
-                        startSignalR();
-                        // start connection to MS SQL
-                        startConnectionToMSSQL();
+//                        // start signalR connection - hide linLayConnecting and show scroolViewLogin if signalR will connect, start service with notifications - start after SignalR connection available - if no than try again
+//                        startSignalR();
+//                        // start connection to MS SQL
+//                        startConnectionToMSSQL();
 
                         // TODO: 3/3 (ominięcie połaczeń signal R i MSSQL) odkomentować to co niżej
-//                        setScannerSection();
-//                        linLayScreansConnectingSignalR.setVisibility(View.GONE);
-//                        linLayScreansConnectingMSSQL.setVisibility(View.GONE);
+                        setScannerSection();
+                        linLayScreansConnectingSignalR.setVisibility(View.GONE);
+                        linLayScreansConnectingMSSQL.setVisibility(View.GONE);
 
                     }
                 });
@@ -900,9 +900,10 @@ public class ActivityScreans extends AppCompatActivity {
             public void run() {
 
                 // vars to SMB connection
-                String hostName = shar.getString(C.WINDOWS_SHARE_HOST_NAME, "192.168.1.104"); // address - dla wifi 192.168.1.104
+                String hostName = shar.getString(C.WINDOWS_SHARE_HOST_NAME, "192.168.1.106"); // address - dla wifi 192.168.1.106 lub inny - sprawdzić w cmd ->IPcongig -> Połączenie lokalne/IPv4 Address
                 String userName = shar.getString(C.WINDOWS_SHARE_USER_NAME, "TestUser"); // user name with access
                 String password = shar.getString(C.WINDOWS_SHARE_PASSWORD, "TestUser"); // password to access
+                String domain = shar.getString(C.WINDOWS_SHARE_DOMAIN, "DOMAIN"); // can be empty
                 String shareName = shar.getString(C.WINDOWS_SHARE_SHARE_NAME, "SmbTest"); // shared folder
                 String path = shar.getString(C.WINDOWS_SHARE_PATH, ""); // - folder in shared place - can be empty if all
                 String fileName = shar.getString(C.WINDOWS_SHARE_FILE_NAME, "FileExampleName.txt");
@@ -915,7 +916,7 @@ public class ActivityScreans extends AppCompatActivity {
 
                 // set connection
                 try (com.hierynomus.smbj.connection.Connection connection = client.connect(hostName)) { // add hostName
-                    AuthenticationContext ac = new AuthenticationContext(userName, password.toCharArray(), "DOMAIN"); // add userName and Password
+                    AuthenticationContext ac = new AuthenticationContext(userName, password.toCharArray(), domain); // add userName, Password and domain(can be empty)
                     Session session = connection.authenticate(ac);
 
                     // Connect to Share folder
@@ -974,6 +975,7 @@ public class ActivityScreans extends AppCompatActivity {
                             @Override
                             public void run() {
                                 Toast.makeText(ActivityScreans.this, "Exception:\n" + e, Toast.LENGTH_LONG).show();
+                                Log.d(TAG, "run: Exception1: " + e);
                                 // show hide buttons
                                 linLaySendToWin.setVisibility(View.VISIBLE);
                                 progressBarSendToWinWait.setVisibility(View.GONE);
@@ -985,6 +987,7 @@ public class ActivityScreans extends AppCompatActivity {
                         @Override
                         public void run() {
                             Toast.makeText(ActivityScreans.this, "Exception:\n" + e, Toast.LENGTH_LONG).show();
+                            Log.d(TAG, "run: Exception2: " + e);
                             // show hide buttons
                             linLaySendToWin.setVisibility(View.VISIBLE);
                             progressBarSendToWinWait.setVisibility(View.GONE);

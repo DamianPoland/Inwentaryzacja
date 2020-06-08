@@ -29,5 +29,6 @@ public class C {
     public static final String WINDOWS_SHARE_SHARE_NAME = "windows share share name";
     public static final String WINDOWS_SHARE_PATH = "windows share path";
     public static final String WINDOWS_SHARE_FILE_NAME = "windows share file name";
+    public static final String WINDOWS_SHARE_DOMAIN = "windows share domain";
 
 }

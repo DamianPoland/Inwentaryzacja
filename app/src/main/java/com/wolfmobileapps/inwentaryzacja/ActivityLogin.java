@@ -13,6 +13,8 @@ import android.net.Network;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -88,10 +90,10 @@ public class ActivityLogin extends AppCompatActivity {
 
 
         // TODO: 1/3 (ominięcie połaczeń signal R i MSSQL) odkomentować to co niżej
-//        startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
-//        if (1==1){
-//            return;
-//        }
+        startActivity(new Intent(ActivityLogin.this, ActivityScreans.class));
+        if (1==1){
+            return;
+        }
 
 
 
@@ -357,5 +359,27 @@ public class ActivityLogin extends AppCompatActivity {
             }
         }).create();
         builder.show();
+    }
+
+    // menu options
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_activity_login, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    // menu options
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch (item.getItemId()) {
+            case R.id.menu_info_login:
+                startActivity(new Intent(ActivityLogin.this, ActivityInfo.class));
+                break;
+            case R.id.menu_settings_login:
+                startActivity(new Intent(ActivityLogin.this, ActivitySettings.class));
+                break;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }

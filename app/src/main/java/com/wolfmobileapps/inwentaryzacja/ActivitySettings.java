@@ -33,7 +33,7 @@ public class ActivitySettings extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
 
         // action bar
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        //getSupportActionBar().setDisplayHomeAsUpEnabled(true); // the same menu option in two activities so can be wrong parent activity
         getSupportActionBar().setTitle("Ustawienia");
 
         //views

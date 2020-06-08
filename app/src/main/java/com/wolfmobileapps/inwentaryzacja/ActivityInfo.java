@@ -29,7 +29,7 @@ public class ActivityInfo extends AppCompatActivity {
         setContentView(R.layout.activity_info);
 
         // action bar
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        //getSupportActionBar().setDisplayHomeAsUpEnabled(true); // the same menu option in two activities so can be wrong parent activity
         getSupportActionBar().setTitle("Info");
 
         version = findViewById(R.id.version);
