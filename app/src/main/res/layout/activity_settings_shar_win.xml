@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ActivitySettingsSharWin">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Host Name:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinHostName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="np: 192.168.1.104"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Domain Name:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinDomainName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="np: Domain"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="User Name:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinUserName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="np: Test User"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Password:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="np: Test User Password"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Shared Folder Name:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinShareName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="np: Example Shared Folder"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Path:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinPath"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Empty"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="File name:"
+                    android:textColor="@color/colorPrimaryDarkBlue900" />
+                <EditText
+                    android:id="@+id/editTextSharWinFileName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="np: FileExampleName.txt"
+                    android:inputType="text"
+                    android:paddingStart="8dp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/buttonSaveSettingsSharWin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/button_custom_white"
+                android:text="  Zapisz  " />
+
+
+
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
